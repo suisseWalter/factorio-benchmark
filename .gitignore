@@ -1,0 +1,7 @@
+benchsaves/*.zip
+files.csv
+cleanfile.csv
+file.out
+hp.out
+cleanfile
+benchmark*/
