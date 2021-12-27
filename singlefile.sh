@@ -1,4 +1,5 @@
 #!/bin/bash
+#this file is a adaptation of the https://factoriobox.1au.us/scripts/benchmark.sh skript and for license one has to check https://factoriobox.1au.us/scripts/benchmark.sh. 
 set -o pipefail
 run() {
   test_bin() {
