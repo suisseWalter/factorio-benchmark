@@ -2,7 +2,6 @@ import csv
 import itertools
 import statistics
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib import style
 def column(table, index):
     col = []
@@ -66,7 +65,7 @@ for col in itertools.chain(range(1,12),range(23,33)):
     ax.set_xlabel("Mean frametime [ms/update]")
     ax.xaxis.grid(True)
     ax.yaxis.grid(False)
-    ax.set_yticks(np.arange(len(maps)) )
+    ax.set_yticks(list(range(len(maps))) )
     r = ax.set_yticklabels(maps, ha = 'left')
     plt.draw()
     yax = ax.get_yaxis()
