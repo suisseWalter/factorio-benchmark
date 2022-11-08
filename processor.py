@@ -43,13 +43,13 @@ for file in filesstr[1:]:
     outrow.append(file[0].split(".")[0])
     outrowerr = []
     outrowerr.append(file[0]+"_stdev")
-    print(inlist[-1])
+    # print(inlist[-1])
     for rowi in range(32):
         outrow.append(statistics.mean(column(inlist, rowi)))
         outrowerr.append(statistics.stdev(column(errinlist, rowi)))
     outfile.append(outrow)
     errfile.append(outrowerr)
-    print(outrowerr)
+    # print(outrowerr)
 
 
 for col in itertools.chain(range(1,12),range(23,33)):

@@ -58,11 +58,16 @@ fi
 
 folder="benchmark_on_"$(date '+%F;%H:%M:%S')
 
-echo $folder
+#echo $folder
 mkdir "$folder"
 mkdir "$folder"/saves/
 mkdir "$folder"/graphs/
-echo "$regex"
+#echo "$regex"
+
+echo "warming up the system"
+MAP="saves/flame10k.zip" bash ./singlefile.sh
+echo "finished warming up, starting the actual benchmark"
+
 for filename in saves/$regex; do
 	echo " ${filename}"
 	bench ${filename}
