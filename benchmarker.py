@@ -28,7 +28,7 @@ def install_maps(link):
     file = requests.get(link)
     open("maps.zip", "xb").write(file.content)
     with ZipFile("maps.zip","r") as zip:
-        zip.extractall("saves/")
+        zip.extractall("saves")
     os.remove("maps.zip")
 
 
@@ -86,7 +86,7 @@ def benchmark_folder(map_regex="*"):
     os.makedirs(os.path.join(folder, "graphs"))
 
     print("Warming up the system...")
-    run_benchmark("saves/big_bases/flame10k.zip", folder, False)
+    run_benchmark(os.path.join("saves","big_bases","flame10k.zip"), folder, False)
     print("Finished warming up, starting the actual benchmark...")
 
     for filename in glob.glob(os.path.join("saves", map_regex), recursive=True):
