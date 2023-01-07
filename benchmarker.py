@@ -4,6 +4,7 @@ import glob
 import itertools
 import os
 import tarfile
+from zipfile import ZipFile
 import requests
 import statistics
 import matplotlib.pyplot as plt
@@ -26,8 +27,8 @@ def install_maps(link):
     """download maps from the walterpi server"""
     file = requests.get(link)
     open("maps.zip", "xb").write(file.content)
-    with tarfile.open("maps.zip", "r:xz") as tar:
-        tar.extractall("saves/")
+    with ZipFile("maps.zip","r") as zip:
+        zip.extractall("saves/")
     os.remove("maps.zip")
 
 
