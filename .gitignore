@@ -4,7 +4,7 @@ cleanfile.csv
 file.out
 hp.out
 cleanfile
-benchmark*
+benchmark*/
 factorio/
 benchsaves2/
 saves/
