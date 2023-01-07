@@ -42,7 +42,7 @@ def install_factorio(link="https://factorio.com/get-download/stable/headless/lin
 
 def run_benchmark(map_, folder, save=True, ticks=1000, runs=1):
     """Run a benchmark on the given map with the specified number of ticks and runs."""
-    factorio_bin = "factorio/bin/x64/factorio"
+    factorio_bin = os.path.join("factorio","bin","x64","factorio")
 
     print("Running benchmark...")
     stdout = os.dup(1)
@@ -79,7 +79,7 @@ def run_benchmark(map_, folder, save=True, ticks=1000, runs=1):
 
 def benchmark_folder(map_regex="*"):
     """Run benchmarks on all maps that match the given regular expression."""
-    folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H:%M:%S')}"
+    folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
     os.makedirs(folder)
     os.makedirs(os.path.join(folder, "saves"))
     os.makedirs(os.path.join(folder, "graphs"))
@@ -337,7 +337,7 @@ parser.add_argument(
     "--repetitions",
     type=int,
     default="5",
-    help="the number of times each map is repeated. default one. should be higher if `--consistency` is set.",
+    help="the number of times each map is repeated. default five. should be higher if `--consistency` is set.",
 )
 parser.add_argument(
     "--version_link",
