@@ -41,13 +41,17 @@ def install_factorio(link="https://factorio.com/get-download/stable/headless/lin
     os.remove("factorio.zip")
 
 
-def run_benchmark(map_, folder, save=True, ticks=1000, runs=1):
+def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
+    if ticks==0:
+        ticks=args.ticks
+    if runs==0:
+        runs=args.repetitions
     """Run a benchmark on the given map with the specified number of ticks and runs."""
     factorio_bin = os.path.join("factorio","bin","x64","factorio")
 
     print("Running benchmark...")
     stdout = os.dup(1)
-    command = f'{factorio_bin} --benchmark "{map_}" --benchmark-ticks {args.ticks} --benchmark-runs {args.repetitions} --benchmark-verbose all --benchmark-sanitize'
+    command = f'{factorio_bin} --benchmark "{map_}" --benchmark-ticks {ticks} --benchmark-runs {runs} --benchmark-verbose all --benchmark-sanitize'
     # print(command)
 
     factorio_log = os.popen(command).read()
@@ -86,10 +90,11 @@ def benchmark_folder(map_regex="*"):
     os.makedirs(os.path.join(folder, "graphs"))
 
     print("Warming up the system...")
-    run_benchmark(os.path.join("saves","big_bases","flame10k.zip"), folder, False)
+    run_benchmark(os.path.join("saves","factorio_maps","big_bases","flame10k.zip"), folder, False,ticks=100,runs=1)
     print("Finished warming up, starting the actual benchmark...")
 
     for filename in glob.glob(os.path.join("saves", map_regex), recursive=True):
+        if not os.path.isfile(filename): continue
         print(filename)
         os.makedirs(os.path.join(folder, os.path.split(filename)[0]), exist_ok=True)
         run_benchmark(filename, folder)
@@ -140,6 +145,7 @@ def benchmark_folder(map_regex="*"):
         )
     ):
         # check if file is actually a file or a folder
+        if not os.path.isfile(file): continue
         cfile = ""
         try:
             cfile = open(file, "r", newline="")
