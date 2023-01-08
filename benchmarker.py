@@ -49,7 +49,7 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
     factorio_bin = os.path.join("factorio","bin","x64","factorio")
 
     print("Running benchmark...")
-    stdout = os.dup(1)
+    os.dup(1)
     command = f'{factorio_bin} --benchmark "{map_}" --benchmark-ticks {ticks} --benchmark-runs {runs} --benchmark-verbose all --benchmark-sanitize'
     # print(command)
 
