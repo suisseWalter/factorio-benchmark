@@ -257,7 +257,6 @@ def plot_ups_consistency(folder, subfolder, data, name="default"):
     plt.savefig(out_path, dpi=800)
     plt.clf()
     plt.close()
-    fig = plt.figure()
 
     plt.plot(t, maxi, label="maximum", linewidth=0.3)
     plt.plot(t, mini, label="minimum", linewidth=0.3)
