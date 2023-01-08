@@ -146,11 +146,10 @@ def benchmark_folder(map_regex="*"):
     ):
         # check if file is actually a file or a folder
         if not os.path.isfile(file): continue
-        cfile = ""
-        try:
-            cfile = open(file, "r", newline="")
-        except:
-            continue
+        
+        
+        
+        
 
         # check if we are in a new folder and if so generate the old graphs.
         file_name = os.path.split(file)[1]
@@ -163,42 +162,43 @@ def benchmark_folder(map_regex="*"):
             outfile = [outheader]
             old_subfolder_name = subfolder_name
 
-        cfilestr = list(csv.reader(cfile, dialect="excel"))
-        inlist = []
-        errinlist = []
+        with  open(file, "r", newline="") as cfile:
+            cfilestr = list(csv.reader(cfile, dialect="excel"))
+            inlist = []
+            errinlist = []
 
-        for i in cfilestr[0 : len(cfilestr)]:
-            try:
-                if int(i[0][1:]) % args.ticks < args.skipticks:
-                    # figure out how to actually skip these ticks.
-                    continue
-                inlist.append([t / 1000000 for t in list(map(int, i[1:-1]))])
-                if not i[0] == "t0":
-                    errinlist.append(list(map(int, i[1:-1])))
-            except:
-                pass
-                # print("can't convert to int")
+            for i in cfilestr[0 : len(cfilestr)]:
+                try:
+                    if int(i[0][1:]) % args.ticks < args.skipticks:
+                        # figure out how to actually skip these ticks.
+                        continue
+                    inlist.append([t / 1000000 for t in list(map(int, i[1:-1]))])
+                    if not i[0] == "t0":
+                        errinlist.append(list(map(int, i[1:-1])))
+                except:
+                    pass
+                    # print("can't convert to int")
 
-        outrow = []
+            outrow = []
 
-        outrow.append(file_name)
+            outrow.append(file_name)
 
-        outrowerr = []
-        outrowerr.append(file_name + "_stdev")
-        for rowi in range(32):
-            outrow.append(statistics.mean(column(inlist, rowi)))
-            outrowerr.append(statistics.stdev(column(errinlist, rowi)))
-        outfile.append(outrow)
-        errfile.append(outrowerr)
+            outrowerr = []
+            outrowerr.append(file_name + "_stdev")
+            for rowi in range(32):
+                outrow.append(statistics.mean(column(inlist, rowi)))
+                outrowerr.append(statistics.stdev(column(errinlist, rowi)))
+            outfile.append(outrow)
+            errfile.append(outrowerr)
 
-        if args.consistency is not None:
-            # do the consistency plot
-            plot_ups_consistency(
-                folder,
-                old_subfolder_name,
-                column(inlist, consistency_index - 1),
-                "consistency_" + file_name + "_" + args.consistency,
-            )
+            if args.consistency is not None:
+                # do the consistency plot
+                plot_ups_consistency(
+                    folder,
+                    old_subfolder_name,
+                    column(inlist, consistency_index - 1),
+                    "consistency_" + file_name + "_" + args.consistency,
+                )
 
     plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
 
