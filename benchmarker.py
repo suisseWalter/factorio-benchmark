@@ -186,6 +186,7 @@ def benchmark_folder(map_regex="*"):
             old_subfolder_name = subfolder_name
 
         with open(file, "r", newline="") as cfile:
+
             cfilestr = list(csv.reader(cfile, dialect="excel"))
             inlist = []
             errinlist = []
