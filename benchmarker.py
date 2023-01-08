@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import csv
 import glob
 import itertools
@@ -6,15 +7,11 @@ import os
 import statistics
 import tarfile
 from datetime import date, datetime
-from zipfile import ZipFile
 from sys import platform as operatingsystem_codename
-from datetime import datetime, date
-import atexit
-import statistics
-import requests
+from zipfile import ZipFile
+
 import matplotlib.pyplot as plt
-
-
+import requests
 
 
 def column(table, index):
