@@ -6,7 +6,7 @@ The goal is, to be able to test different maps quickly and be able to compare th
 ### Linux
 just run `benchmarker.py -u -m` to install the latest version of factorio and download some sample maps. This will also directly run the programm a first time. 
 
-it needs python3. therefore depending on your distro you might have to do `pythen3 benchmarker.py -u -m` or `python benchmarker.py -u -m.
+it needs python3. therefore depending on your distro you might have to do `python3 benchmarker.py -u -m` or `python benchmarker.py -u -m.
 ### Windows 
 with WSL2:
 You are using Linux therefore just use the linux install: `python benchmarker.py -u -m`
