@@ -172,7 +172,7 @@ def benchmark_folder(map_regex="*"):
                     # figure out how to actually skip these ticks.
                     continue
                 inlist.append([t / 1000000 for t in list(map(int, i[1:-1]))])
-                if not i[0] == "t0":
+                if i[0] != "t0":
                     errinlist.append(list(map(int, i[1:-1])))
             except Exception:
                 pass
