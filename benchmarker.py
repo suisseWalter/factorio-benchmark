@@ -17,7 +17,7 @@ def column(table, index):
     for row in table:
         try:
             col.append(row[index])
-        except:
+        except Exception:
             continue
     return col
 
@@ -148,7 +148,7 @@ def benchmark_folder(map_regex="*"):
         cfile = ""
         try:
             cfile = open(file, "r", newline="")
-        except:
+        except Exception:
             continue
 
         # check if we are in a new folder and if so generate the old graphs.
@@ -174,7 +174,7 @@ def benchmark_folder(map_regex="*"):
                 inlist.append([t / 1000000 for t in list(map(int, i[1:-1]))])
                 if not i[0] == "t0":
                     errinlist.append(list(map(int, i[1:-1])))
-            except:
+            except Exception:
                 pass
                 # print("can't convert to int")
 
