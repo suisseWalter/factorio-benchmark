@@ -25,7 +25,8 @@ def column(table, index):
 def install_maps(link):
     """download maps from the walterpi server"""
     file = requests.get(link)
-    open("maps.zip", "xb").write(file.content)
+    with open("maps.zip", "xb") as mapsfile:
+        mapsfile.write(file.content)
     with ZipFile("maps.zip","r") as zip:
         zip.extractall("saves")
     os.remove("maps.zip")
