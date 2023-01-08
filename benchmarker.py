@@ -40,7 +40,7 @@ def sync_mods(map: str, disable_all: bool = False):
     if not disable_all:
         set_mod_command = os.path.join("fmm", fmm_name) + f' --game-dir factorio sf "{map}"'
     else:
-        set_mod_command = os.path.join("fmm", fmm_name) + f" --game-dir factorio disable"
+        set_mod_command = os.path.join("fmm", fmm_name) + " --game-dir factorio disable"
     print(os.popen(set_mod_command).read())
 
 
