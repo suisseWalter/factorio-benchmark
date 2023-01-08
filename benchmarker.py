@@ -93,7 +93,8 @@ def benchmark_folder(map_regex="*"):
     print("Finished warming up, starting the actual benchmark...")
 
     for filename in glob.glob(os.path.join("saves", map_regex), recursive=True):
-        if not os.path.isfile(filename): continue
+        if not os.path.isfile(filename):
+            continue
         print(filename)
         os.makedirs(os.path.join(folder, os.path.split(filename)[0]), exist_ok=True)
         run_benchmark(filename, folder)
@@ -144,7 +145,8 @@ def benchmark_folder(map_regex="*"):
         )
     ):
         # check if file is actually a file or a folder
-        if not os.path.isfile(file): continue
+        if not os.path.isfile(file): 
+            continue
         cfile = ""
         try:
             cfile = open(file, "r", newline="")
