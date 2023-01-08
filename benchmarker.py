@@ -206,9 +206,8 @@ def benchmark_folder(map_regex="*"):
     plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
 
     errout_path = os.path.join(folder, "stdev.csv")
-    erroutfile = open(errout_path, "w+", newline="")
-    erroutfile.write(str(errfile))
-    erroutfile.close()
+    with open(errout_path, "w+", newline="") as erroutfile:
+        erroutfile.write(str(errfile))
 
 
 def plot_ups_consistency(folder, subfolder, data, name="default"):
