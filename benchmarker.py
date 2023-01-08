@@ -234,7 +234,7 @@ def plot_ups_consistency(folder, subfolder, data, name="default"):
         med.append(statistics.median(c))
         maxi.append(max(c))
         mini.append(min(c))
-    fig = plt.figure()
+
     for i in range(int(len(data) / (args.ticks - args.skipticks))):
         plt.plot(
             t,
