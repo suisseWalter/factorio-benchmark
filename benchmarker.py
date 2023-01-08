@@ -54,11 +54,13 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
         runs = args.repetitions
     factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
     # setting mods
-    set_mod_command = (
-        os.path.join("fmm", "fmm_" + operatingsystem_codename)
-        + f' --game-dir factorio sf "{map_}"'
-    )
+    # setting mods
+    fmm_name = {"linux": "fmm_linux", "win32": "fmm_win32.exe", "cygwin": "fmm_win32.exe"}[
+        operatingsystem_codename
+    ]
+    set_mod_command = os.path.join("fmm", fmm_name) + f' --game-dir factorio sf "{map_}"'
     print(os.popen(set_mod_command).read())
+
     print("Running benchmark...")
     os.dup(1)
     command = (
