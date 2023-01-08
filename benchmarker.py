@@ -3,12 +3,13 @@ import csv
 import glob
 import itertools
 import os
-import tarfile
-from zipfile import ZipFile
-import requests
 import statistics
+import tarfile
+from datetime import date, datetime
+from zipfile import ZipFile
+
 import matplotlib.pyplot as plt
-from datetime import datetime, date
+import requests
 
 
 def column(table, index):
@@ -17,7 +18,7 @@ def column(table, index):
     for row in table:
         try:
             col.append(row[index])
-        except Exception:
+        except Exception:  # noqa: PIE786
             continue
     return col
 
@@ -199,16 +200,13 @@ def benchmark_folder(map_regex="*"):
                     inlist.append([t / 1000000 for t in list(map(int, i[1:-1]))])
                     if i[0] != "t0":
                         errinlist.append(list(map(int, i[1:-1])))
-                except Exception:
+                except Exception:  # noqa: PIE786
                     pass
                     # print("can't convert to int")
 
-            outrow = []
+            outrow = [file_name]
 
-            outrow.append(file_name)
-
-            outrowerr = []
-            outrowerr.append(file_name + "_stdev")
+            outrowerr = [file_name + "_stdev"]
             for rowi in range(32):
                 outrow.append(statistics.mean(column(inlist, rowi)))
                 outrowerr.append(statistics.stdev(column(errinlist, rowi)))
