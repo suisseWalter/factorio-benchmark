@@ -34,7 +34,8 @@ def install_maps(link):
 def install_factorio(link="https://factorio.com/get-download/stable/headless/linux64"):
     """Download and extract the latest version of Factorio."""
     file = requests.get(link)
-    open("factorio.zip", "xb").write(file.content)
+    with open("factorio.zip", "xb") as zipfile:
+        zipfile.write(file.content)
     with tarfile.open("factorio.zip", "r:xz") as tar:
         tar.extractall("")
     os.remove("factorio.zip")
