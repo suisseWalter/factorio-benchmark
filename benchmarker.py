@@ -8,7 +8,6 @@ from zipfile import ZipFile
 import requests
 import statistics
 import matplotlib.pyplot as plt
-from matplotlib import style
 from datetime import datetime, date
 
 
