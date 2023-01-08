@@ -76,32 +76,22 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
         1000
         * args.ticks
         / float(
-            [
-                line.split()[-2]
-                for line in factorio_log.split("\n")
-                if "Performed" in line
-            ][0]
+            [line.split()[-2] for line in factorio_log.split("\n") if "Performed" in line][0]
         )
     )
     print(f"Map benchmarked at {ups} UPS")
     if not save:
         return
     filtered_output = [
-        line
-        for line in factorio_log.split("\n")
-        if "ed" in line or "t" in line
+        line for line in factorio_log.split("\n") if "ed" in line or "t" in line
     ]
-    with open(
-        os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x"
-    ) as f:
+    with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
         f.write("\n".join(filtered_output))
 
 
 def benchmark_folder(map_regex="*"):
     """Run benchmarks on all maps that match the given regular expression."""
-    folder = (
-        f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
-    )
+    folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
     os.makedirs(folder)
     os.makedirs(os.path.join(folder, "saves"))
     os.makedirs(os.path.join(folder, "graphs"))
@@ -116,15 +106,11 @@ def benchmark_folder(map_regex="*"):
     )
     print("Finished warming up, starting the actual benchmark...")
 
-    for filename in glob.glob(
-        os.path.join("saves", map_regex), recursive=True
-    ):
+    for filename in glob.glob(os.path.join("saves", map_regex), recursive=True):
         if not os.path.isfile(filename):
             continue
         print(filename)
-        os.makedirs(
-            os.path.join(folder, os.path.split(filename)[0]), exist_ok=True
-        )
+        os.makedirs(os.path.join(folder, os.path.split(filename)[0]), exist_ok=True)
         run_benchmark(filename, folder)
 
     outheader = [
@@ -188,7 +174,6 @@ def benchmark_folder(map_regex="*"):
         if not os.path.isfile(file):
             continue
 
-
         # check if we are in a new folder and if so generate the old graphs.
         file_name = os.path.split(file)[1]
         subfolder_name = os.path.split(os.path.split(file)[0])[1]
@@ -196,13 +181,11 @@ def benchmark_folder(map_regex="*"):
             old_subfolder_name = subfolder_name
         # print(subfolder_name)
         if subfolder_name != old_subfolder_name:
-            plot_benchmark_results(
-                outfile, folder, old_subfolder_name, errfile
-            )
+            plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
             outfile = [outheader]
             old_subfolder_name = subfolder_name
 
-        with  open(file, "r", newline="") as cfile:
+        with open(file, "r", newline="") as cfile:
             cfilestr = list(csv.reader(cfile, dialect="excel"))
             inlist = []
             errinlist = []
@@ -240,7 +223,6 @@ def benchmark_folder(map_regex="*"):
                     "consistency_" + file_name + "_" + args.consistency,
                 )
 
-
     plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
 
     errout_path = os.path.join(folder, "stdev.csv")
@@ -261,11 +243,7 @@ def plot_ups_consistency(folder, subfolder, data, name="default"):
     t = list(range(args.skipticks, args.ticks))
     for i in range(int(len(data) / (args.ticks - args.skipticks))):
         darray.append(
-            data[
-                (args.ticks - args.skipticks)
-                * i : (args.ticks - args.skipticks)
-                * (i + 1)
-            ]
+            data[(args.ticks - args.skipticks) * i : (args.ticks - args.skipticks) * (i + 1)]
         )
     for i in range(len(darray[0])):
         # first discard the highest value as that can frequently be an outlier.
@@ -277,11 +255,7 @@ def plot_ups_consistency(folder, subfolder, data, name="default"):
     for i in range(int(len(data) / (args.ticks - args.skipticks))):
         plt.plot(
             t,
-            data[
-                (args.ticks - args.skipticks)
-                * i : (args.ticks - args.skipticks)
-                * (i + 1)
-            ],
+            data[(args.ticks - args.skipticks) * i : (args.ticks - args.skipticks) * (i + 1)],
             "k",
             alpha=0.2,
             linewidth=0.6,
@@ -346,8 +320,7 @@ def plot_benchmark_results(outfile, folder, subfolder, errfile):
 
 parser = argparse.ArgumentParser(
     description=(
-        "Benchmark Factorio maps. "
-        "The default configuration is `-r \"**\" -s 20 -t 1000 -e 5"
+        "Benchmark Factorio maps. " 'The default configuration is `-r "**" -s 20 -t 1000 -e 5'
     )
 )
 parser.add_argument(
