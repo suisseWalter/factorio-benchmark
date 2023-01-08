@@ -5,6 +5,7 @@ import itertools
 import os
 import tarfile
 from zipfile import ZipFile
+from sys import platform as operatingsystem_codename
 import requests
 import statistics
 import matplotlib.pyplot as plt
@@ -52,7 +53,12 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
     if runs == 0:
         runs = args.repetitions
     factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
-
+    # setting mods
+    set_mod_command = (
+        os.path.join("fmm", "fmm_" + operatingsystem_codename)
+        + f' --game-dir factorio sf "{map_}"'
+    )
+    print(os.popen(set_mod_command).read())
     print("Running benchmark...")
     os.dup(1)
     command = (
