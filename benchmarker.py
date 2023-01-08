@@ -7,9 +7,14 @@ import statistics
 import tarfile
 from datetime import date, datetime
 from zipfile import ZipFile
-
-import matplotlib.pyplot as plt
+from sys import platform as operatingsystem_codename
+from datetime import datetime, date
+import atexit
+import statistics
 import requests
+import matplotlib.pyplot as plt
+
+
 
 
 def column(table, index):
@@ -21,6 +26,25 @@ def column(table, index):
         except Exception:  # noqa: PIE786
             continue
     return col
+
+
+def exit_handler():
+    print("Terminating grasfully!")
+    sync_mods("", True)
+    # I should also clean up potential other files
+    # such as the lock file (factorio/.lock on linux)
+    # also factorio.zip and maps.zip can be left over in rare cases and fail the reinstall.
+
+
+def sync_mods(map: str, disable_all: bool = False):
+    fmm_name = {"linux": "fmm_linux", "win32": "fmm_win32.exe", "cygwin": "fmm_win32.exe"}[
+        operatingsystem_codename
+    ]
+    if not disable_all:
+        set_mod_command = os.path.join("fmm", fmm_name) + f' --game-dir factorio sf "{map}"'
+    else:
+        set_mod_command = os.path.join("fmm", fmm_name) + f" --game-dir factorio disable"
+    print(os.popen(set_mod_command).read())
 
 
 def install_maps(link):
@@ -53,6 +77,9 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
     if runs == 0:
         runs = args.repetitions
     factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
+    # setting mods
+    if not args.disable_mods:
+        sync_mods(map_)
 
     print("Running benchmark...")
     os.dup(1)
@@ -317,6 +344,7 @@ def plot_benchmark_results(outfile, folder, subfolder, errfile):
         plt.close()
 
 
+atexit.register(exit_handler)
 parser = argparse.ArgumentParser(
     description=(
         "Benchmark Factorio maps. " 'The default configuration is `-r "**" -s 20 -t 1000 -e 5'
@@ -389,6 +417,7 @@ parser.add_argument(
         "forget to update afterwards.",
     ),
 )
+
 parser.add_argument(
     "-m",
     "--install_maps",
@@ -397,6 +426,13 @@ parser.add_argument(
     const="https://walterpi.hopto.org/s/g6BLGR6wa27cNRf/download",
     help="install maps",
 )
+parser.add_argument(
+    "-dm",
+    "--disable_mods",
+    action="store_true",
+    help="disables the usage of mod syncronisations. runs all benchmarks without enabling any mods",
+)
+
 args = parser.parse_args()
 outheader = [
     "name",
@@ -453,4 +489,6 @@ if args.install_maps:
 
 
 benchmark_folder(map_regex=args.regex)
+sync_mods("", True)
+
 # plot_benchmark_results()
