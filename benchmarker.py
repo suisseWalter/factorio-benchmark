@@ -27,12 +27,14 @@ def install_maps(link):
     file = requests.get(link)
     with open("maps.zip", "xb") as mapsfile:
         mapsfile.write(file.content)
-    with ZipFile("maps.zip","r") as zip:
+    with ZipFile("maps.zip", "r") as zip:
         zip.extractall("saves")
     os.remove("maps.zip")
 
 
-def install_factorio(link="https://factorio.com/get-download/stable/headless/linux64"):
+def install_factorio(
+    link="https://factorio.com/get-download/stable/headless/linux64",
+):
     """Download and extract the latest version of Factorio."""
     file = requests.get(link)
     with open("factorio.zip", "xb") as zipfile:
@@ -43,16 +45,24 @@ def install_factorio(link="https://factorio.com/get-download/stable/headless/lin
 
 
 def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
-    if ticks==0:
-        ticks=args.ticks
-    if runs==0:
-        runs=args.repetitions
-    """Run a benchmark on the given map with the specified number of ticks and runs."""
-    factorio_bin = os.path.join("factorio","bin","x64","factorio")
+    """Run a benchmark on the given map with the specified number of ticks and
+    runs."""
+    if ticks == 0:
+        ticks = args.ticks
+    if runs == 0:
+        runs = args.repetitions
+    factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
 
     print("Running benchmark...")
     os.dup(1)
-    command = f'{factorio_bin} --benchmark "{map_}" --benchmark-ticks {ticks} --benchmark-runs {runs} --benchmark-verbose all --benchmark-sanitize'
+    command = (
+        f"{factorio_bin} "
+        '--benchmark "{map_}" '
+        "--benchmark-ticks {ticks} "
+        "--benchmark-runs {runs} "
+        "--benchmark-verbose all "
+        "--benchmark-sanitize"
+    )
     # print(command)
 
     factorio_log = os.popen(command).read()
@@ -77,28 +87,44 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
     if not save:
         return
     filtered_output = [
-        line for line in factorio_log.split("\n") if "ed" in line or "t" in line
+        line
+        for line in factorio_log.split("\n")
+        if "ed" in line or "t" in line
     ]
-    with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
+    with open(
+        os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x"
+    ) as f:
         f.write("\n".join(filtered_output))
 
 
 def benchmark_folder(map_regex="*"):
     """Run benchmarks on all maps that match the given regular expression."""
-    folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
+    folder = (
+        f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
+    )
     os.makedirs(folder)
     os.makedirs(os.path.join(folder, "saves"))
     os.makedirs(os.path.join(folder, "graphs"))
 
     print("Warming up the system...")
-    run_benchmark(os.path.join("saves","factorio_maps","big_bases","flame10k.zip"), folder, False,ticks=100,runs=1)
+    run_benchmark(
+        os.path.join("saves", "factorio_maps", "big_bases", "flame10k.zip"),
+        folder,
+        False,
+        ticks=100,
+        runs=1,
+    )
     print("Finished warming up, starting the actual benchmark...")
 
-    for filename in glob.glob(os.path.join("saves", map_regex), recursive=True):
+    for filename in glob.glob(
+        os.path.join("saves", map_regex), recursive=True
+    ):
         if not os.path.isfile(filename):
             continue
         print(filename)
-        os.makedirs(os.path.join(folder, os.path.split(filename)[0]), exist_ok=True)
+        os.makedirs(
+            os.path.join(folder, os.path.split(filename)[0]), exist_ok=True
+        )
         run_benchmark(filename, folder)
 
     outheader = [
@@ -139,7 +165,18 @@ def benchmark_folder(map_regex="*"):
     outfile = [outheader]
     errfile = [outheader[:]]
     old_subfolder_name = ""
-    # print(sorted(glob.glob(os.path.join(folder, "saves", map_regex),recursive=True)))
+    # print(
+    #     sorted(
+    #         glob.glob(
+    #             os.path.join(
+    #                 folder,
+    #                 "saves",
+    #                 map_regex,
+    #             ),
+    #             recursive=True,
+    #         )
+    #     )
+    # )
     for file in sorted(
         glob.glob(
             os.path.join(folder, "saves", map_regex),
@@ -147,7 +184,7 @@ def benchmark_folder(map_regex="*"):
         )
     ):
         # check if file is actually a file or a folder
-        if not os.path.isfile(file): 
+        if not os.path.isfile(file):
             continue
         cfile = ""
         try:
@@ -162,7 +199,9 @@ def benchmark_folder(map_regex="*"):
             old_subfolder_name = subfolder_name
         # print(subfolder_name)
         if subfolder_name != old_subfolder_name:
-            plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
+            plot_benchmark_results(
+                outfile, folder, old_subfolder_name, errfile
+            )
             outfile = [outheader]
             old_subfolder_name = subfolder_name
 
@@ -290,7 +329,9 @@ def plot_benchmark_results(outfile, folder, subfolder, errfile):
         update = column(outfile, col)[1:]
         hbars = ax.barh(maps, update)
         ax.bar_label(
-            hbars, labels=[f"{x:.3f}" for x in column(outfile, col)[1:]], padding=3
+            hbars,
+            labels=[f"{x:.3f}" for x in column(outfile, col)[1:]],
+            padding=3,
         )
         ax.margins(0.1, 0.05)
         ax.set_title(outfile[0][col])
@@ -305,7 +346,10 @@ def plot_benchmark_results(outfile, folder, subfolder, errfile):
 
 
 parser = argparse.ArgumentParser(
-    description='Benchmark Factorio maps. \n The default configuration is `-r "**" -s 20 -t 1000 -e 5'
+    description=(
+        "Benchmark Factorio maps. "
+        "The default configuration is `-r " ** " -s 20 -t 1000 -e 5"
+    )
 )
 parser.add_argument(
     "-u",
@@ -317,21 +361,36 @@ parser.add_argument(
     "-r",
     "--regex",
     default="**",
-    help="Regular expression to match map names to benchmark. The regex either needs to be escaped by quotes or every special character needs to be escaped. use ** if you want to match everything. * can only be used if a specific folder is specified.",
+    help=(
+        "Regular expression to match map names to benchmark. "
+        "The regex either needs to be escaped by quotes or every special "
+        "character needs to be escaped. use ** if you want to match "
+        "everything. * can only be used if a specific folder is specified.",
+    ),
 )
 parser.add_argument(
     "-c",
     "--consistency",
     nargs="?",
     const="wholeUpdate",
-    help="generates a update time consistency plot for the given metric. It has to be a metric accessible by --benchmark-verbose. the default value is 'wholeUpdate'. the first 10 ticks are skipped.(this can be set by setting '--skipticks'.",
+    help=(
+        "generates a update time consistency plot for the given metric. It "
+        "has to be a metric accessible by --benchmark-verbose. the default "
+        "value is 'wholeUpdate'. the first 10 ticks are skipped.(this can "
+        "be set by setting '--skipticks'.",
+    ),
 )
 parser.add_argument(
     "-s",
     "--skipticks",
     type=int,
     default="20",
-    help="the amount of ticks that are ignored at the beginning of very benchmark. helps to get more consistent data, especially for consistency plots. change this to '0' if you want to use all the data",
+    help=(
+        "the amount of ticks that are ignored at the beginning of very "
+        "benchmark. helps to get more consistent data, especially for "
+        "consistency plots. change this to '0' if you want to use all the "
+        "data",
+    ),
 )
 parser.add_argument(
     "-t",
@@ -345,12 +404,19 @@ parser.add_argument(
     "--repetitions",
     type=int,
     default="5",
-    help="the number of times each map is repeated. default five. should be higher if `--consistency` is set.",
+    help=(
+        "the number of times each map is repeated. default five. should be "
+        "higher if `--consistency` is set.",
+    ),
 )
 parser.add_argument(
     "--version_link",
     type=str,
-    help="if you want to install a specific version of factorio. you have to provide the complete download link to the headless version. don't forget to update afterwards.",
+    help=(
+        "if you want to install a specific version of factorio. you have to "
+        "provide the complete download link to the headless version. don't "
+        "forget to update afterwards.",
+    ),
 )
 parser.add_argument(
     "-m",
