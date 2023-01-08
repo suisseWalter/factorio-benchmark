@@ -57,9 +57,9 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
     os.dup(1)
     command = (
         f"{factorio_bin} "
-        '--benchmark "{map_}" '
-        "--benchmark-ticks {ticks} "
-        "--benchmark-runs {runs} "
+        f'--benchmark "{map_}" '
+        f"--benchmark-ticks {ticks} "
+        f"--benchmark-runs {runs} "
         "--benchmark-verbose all "
         "--benchmark-sanitize"
     )
@@ -347,7 +347,7 @@ def plot_benchmark_results(outfile, folder, subfolder, errfile):
 parser = argparse.ArgumentParser(
     description=(
         "Benchmark Factorio maps. "
-        "The default configuration is `-r " ** " -s 20 -t 1000 -e 5"
+        "The default configuration is `-r \"**\" -s 20 -t 1000 -e 5"
     )
 )
 parser.add_argument(
