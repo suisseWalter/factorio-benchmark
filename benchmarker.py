@@ -15,6 +15,41 @@ import requests
 import matplotlib.pyplot as plt
 
 
+outheader = [
+    "name",
+    "timestamp",
+    "wholeUpdate",
+    "latencyUpdate",
+    "gameUpdate",
+    "circuitNetworkUpdate",
+    "transportLinesUpdate",
+    "fluidsUpdate",
+    "heatManagerUpdate",
+    "entityUpdate",
+    "particleUpdate",
+    "mapGenerator",
+    "mapGeneratorBasicTilesSupportCompute",
+    "mapGeneratorBasicTilesSupportApply",
+    "mapGeneratorCorrectedTilesPrepare",
+    "mapGeneratorCorrectedTilesCompute",
+    "mapGeneratorCorrectedTilesApply",
+    "mapGeneratorVariations",
+    "mapGeneratorEntitiesPrepare",
+    "mapGeneratorEntitiesCompute",
+    "mapGeneratorEntitiesApply",
+    "crcComputation",
+    "electricNetworkUpdate",
+    "logisticManagerUpdate",
+    "constructionManagerUpdate",
+    "pathFinder",
+    "trains",
+    "trainPathFinder",
+    "commander",
+    "chartRefresh",
+    "luaGarbageIncremental",
+    "chartUpdate",
+    "scriptUpdate",
+]
 
 
 def column(table, index):
@@ -43,7 +78,8 @@ def sync_mods(map: str, disable_all: bool = False):
     if not disable_all:
         set_mod_command = os.path.join("fmm", fmm_name) + f' --game-dir factorio sf "{map}"'
     else:
-        set_mod_command = os.path.join("fmm", fmm_name) + f" --game-dir factorio disable"
+        set_mod_command = os.path.join("fmm", fmm_name) + " --game-dir factorio disable"
+    # print(">>>> sync_mods()\t", set_mod_command)
     print(os.popen(set_mod_command).read())
 
 
@@ -69,16 +105,13 @@ def install_factorio(
     os.remove("factorio.zip")
 
 
-def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
+def run_benchmark(map_, folder, ticks, runs, save=True, disable_mods=True, factorio_bin=None):
     """Run a benchmark on the given map with the specified number of ticks and
     runs."""
-    if ticks == 0:
-        ticks = args.ticks
-    if runs == 0:
-        runs = args.repetitions
-    factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
+    if factorio_bin is None:
+        factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
     # setting mods
-    if not args.disable_mods:
+    if not disable_mods:
         sync_mods(map_)
 
     print("Running benchmark...")
@@ -102,24 +135,30 @@ def run_benchmark(map_, folder, save=True, ticks=0, runs=0):
     # print(factorio_log)
     ups = int(
         1000
-        * args.ticks
-        / float(
-            [line.split()[-2] for line in factorio_log.split("\n") if "Performed" in line][0]
-        )
+        * ticks
+        / float([line.split()[-2] for line in factorio_log.split("\n") if "Performed" in line][0])
     )
-    print(f"Map benchmarked at {ups} UPS")
-    if not save:
-        return
-    filtered_output = [
-        line for line in factorio_log.split("\n") if "ed" in line or "t" in line
-    ]
-    with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
-        f.write("\n".join(filtered_output))
+    print(f"Map benchmarked at {ups} UPS\r\n")
+    if save:
+        filtered_output = [line for line in factorio_log.split("\n") if "ed" in line or "t" in line]
+        with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
+            f.write("\n".join(filtered_output))
 
 
-def benchmark_folder(map_regex="*"):
+def benchmark_folder(
+    ticks,
+    runs,
+    disable_mods,
+    skipticks,
+    consistency,
+    map_regex="*",
+    factorio_bin=None,
+    folder=None,
+    filenames=None,
+):
     """Run benchmarks on all maps that match the given regular expression."""
-    folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
+    if folder is None:
+        folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
     os.makedirs(folder)
     os.makedirs(os.path.join(folder, "saves"))
     os.makedirs(os.path.join(folder, "graphs"))
@@ -128,54 +167,36 @@ def benchmark_folder(map_regex="*"):
     run_benchmark(
         os.path.join("saves", "factorio_maps", "big_bases", "flame10k.zip"),
         folder,
-        False,
         ticks=100,
         runs=1,
+        save=False,
+        disable_mods=disable_mods,
+        factorio_bin=factorio_bin,
     )
     print("Finished warming up, starting the actual benchmark...")
 
-    for filename in glob.glob(os.path.join("saves", map_regex), recursive=True):
-        if not os.path.isfile(filename):
-            continue
-        print(filename)
-        os.makedirs(os.path.join(folder, os.path.split(filename)[0]), exist_ok=True)
-        run_benchmark(filename, folder)
+    print()
+    print("==================")
+    print("benchmark maps")
+    print("==================\r\n")
+    if filenames is None:
+        filenames = glob.glob(os.path.join("saves", map_regex), recursive=True)
+    for filename in filenames:
+        if os.path.isfile(filename):
+            print(filename)
+            os.makedirs(os.path.join(folder, os.path.split(filename)[0]), exist_ok=True)
+            run_benchmark(
+                filename,
+                folder,
+                ticks=ticks,
+                runs=runs,
+                save=True,
+                disable_mods=disable_mods,
+                factorio_bin=factorio_bin,
+            )
 
-    outheader = [
-        "name",
-        "timestamp",
-        "wholeUpdate",
-        "latencyUpdate",
-        "gameUpdate",
-        "circuitNetworkUpdate",
-        "transportLinesUpdate",
-        "fluidsUpdate",
-        "heatManagerUpdate",
-        "entityUpdate",
-        "particleUpdate",
-        "mapGenerator",
-        "mapGeneratorBasicTilesSupportCompute",
-        "mapGeneratorBasicTilesSupportApply",
-        "mapGeneratorCorrectedTilesPrepare",
-        "mapGeneratorCorrectedTilesCompute",
-        "mapGeneratorCorrectedTilesApply",
-        "mapGeneratorVariations",
-        "mapGeneratorEntitiesPrepare",
-        "mapGeneratorEntitiesCompute",
-        "mapGeneratorEntitiesApply",
-        "crcComputation",
-        "electricNetworkUpdate",
-        "logisticManagerUpdate",
-        "constructionManagerUpdate",
-        "pathFinder",
-        "trains",
-        "trainPathFinder",
-        "commander",
-        "chartRefresh",
-        "luaGarbageIncremental",
-        "chartUpdate",
-        "scriptUpdate",
-    ]
+    print("==================")
+    print("creating graphs")
     outfile = [outheader]
     errfile = [outheader[:]]
     old_subfolder_name = ""
@@ -221,7 +242,7 @@ def benchmark_folder(map_regex="*"):
 
             for i in cfilestr[0 : len(cfilestr)]:
                 try:
-                    if int(i[0][1:]) % args.ticks < args.skipticks:
+                    if int(i[0][1:]) % ticks < skipticks:
                         # figure out how to actually skip these ticks.
                         continue
                     inlist.append([t / 1000000 for t in list(map(int, i[1:-1]))])
@@ -240,23 +261,29 @@ def benchmark_folder(map_regex="*"):
             outfile.append(outrow)
             errfile.append(outrowerr)
 
-            if args.consistency is not None:
+            if consistency is not None:
                 # do the consistency plot
                 plot_ups_consistency(
-                    folder,
-                    old_subfolder_name,
-                    column(inlist, consistency_index - 1),
-                    "consistency_" + file_name + "_" + args.consistency,
+                    folder=folder,
+                    subfolder=old_subfolder_name,
+                    data=column(inlist, consistency_index - 1),
+                    ticks=ticks,
+                    skipticks=skipticks,
+                    name="consistency_" + file_name + "_" + consistency,
                 )
 
     plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
 
+    print("saving benchmark results")
     errout_path = os.path.join(folder, "stdev.csv")
     with open(errout_path, "w+", newline="") as erroutfile:
         erroutfile.write(str(errfile))
 
+    print("\r\nthe benchmark is finished")
+    print("==================")
 
-def plot_ups_consistency(folder, subfolder, data, name="default"):
+
+def plot_ups_consistency(folder, subfolder, data, ticks, skipticks, name="default"):
     subfolder_path = os.path.join(folder, "graphs", subfolder)
 
     if not os.path.exists(subfolder_path):
@@ -266,11 +293,9 @@ def plot_ups_consistency(folder, subfolder, data, name="default"):
     maxi = []
     mini = []
 
-    t = list(range(args.skipticks, args.ticks))
-    for i in range(int(len(data) / (args.ticks - args.skipticks))):
-        darray.append(
-            data[(args.ticks - args.skipticks) * i : (args.ticks - args.skipticks) * (i + 1)]
-        )
+    t = list(range(skipticks, ticks))
+    for i in range(int(len(data) / (ticks - skipticks))):
+        darray.append(data[(ticks - skipticks) * i : (ticks - skipticks) * (i + 1)])
     for i in range(len(darray[0])):
         # first discard the highest value as that can frequently be an outlier.
         c = sorted(column(darray, i))[:-1]
@@ -278,10 +303,10 @@ def plot_ups_consistency(folder, subfolder, data, name="default"):
         maxi.append(max(c))
         mini.append(min(c))
 
-    for i in range(int(len(data) / (args.ticks - args.skipticks))):
+    for i in range(int(len(data) / (ticks - skipticks))):
         plt.plot(
             t,
-            data[(args.ticks - args.skipticks) * i : (args.ticks - args.skipticks) * (i + 1)],
+            data[(ticks - skipticks) * i : (ticks - skipticks) * (i + 1)],
             "k",
             alpha=0.2,
             linewidth=0.6,
@@ -344,151 +369,131 @@ def plot_benchmark_results(outfile, folder, subfolder, errfile):
         plt.close()
 
 
-atexit.register(exit_handler)
-parser = argparse.ArgumentParser(
-    description=(
-        "Benchmark Factorio maps. " 'The default configuration is `-r "**" -s 20 -t 1000 -e 5'
+def init_parser():
+    parser = argparse.ArgumentParser(
+        description=(
+            "Benchmark Factorio maps. " 'The default configuration is `-r "**" -s 20 -t 1000 -e 5'
+        )
     )
-)
-parser.add_argument(
-    "-u",
-    "--update",
-    action="store_true",
-    help="Update Factorio to the latest version before running benchmarks.",
-)
-parser.add_argument(
-    "-r",
-    "--regex",
-    default="**",
-    help=(
-        "Regular expression to match map names to benchmark. "
-        "The regex either needs to be escaped by quotes or every special "
-        "character needs to be escaped. use ** if you want to match "
-        "everything. * can only be used if a specific folder is specified.",
-    ),
-)
-parser.add_argument(
-    "-c",
-    "--consistency",
-    nargs="?",
-    const="wholeUpdate",
-    help=(
-        "generates a update time consistency plot for the given metric. It "
-        "has to be a metric accessible by --benchmark-verbose. the default "
-        "value is 'wholeUpdate'. the first 10 ticks are skipped.(this can "
-        "be set by setting '--skipticks'.",
-    ),
-)
-parser.add_argument(
-    "-s",
-    "--skipticks",
-    type=int,
-    default="20",
-    help=(
-        "the amount of ticks that are ignored at the beginning of very "
-        "benchmark. helps to get more consistent data, especially for "
-        "consistency plots. change this to '0' if you want to use all the "
-        "data",
-    ),
-)
-parser.add_argument(
-    "-t",
-    "--ticks",
-    type=int,
-    default="1000",
-    help="the default amount of ticks to run for. defaults to 1000",
-)
-parser.add_argument(
-    "-e",
-    "--repetitions",
-    type=int,
-    default="5",
-    help=(
-        "the number of times each map is repeated. default five. should be "
-        "higher if `--consistency` is set.",
-    ),
-)
-parser.add_argument(
-    "--version_link",
-    type=str,
-    help=(
-        "if you want to install a specific version of factorio. you have to "
-        "provide the complete download link to the headless version. don't "
-        "forget to update afterwards.",
-    ),
-)
+    parser.add_argument(
+        "-u",
+        "--update",
+        action="store_true",
+        help="Update Factorio to the latest version before running benchmarks.",
+    )
+    parser.add_argument(
+        "-r",
+        "--regex",
+        default="**",
+        help=(
+            "Regular expression to match map names to benchmark. "
+            "The regex either needs to be escaped by quotes or every special "
+            "character needs to be escaped. use ** if you want to match "
+            "everything. * can only be used if a specific folder is specified.",
+        ),
+    )
+    parser.add_argument(
+        "-c",
+        "--consistency",
+        nargs="?",
+        const="wholeUpdate",
+        help=(
+            "generates a update time consistency plot for the given metric. It "
+            "has to be a metric accessible by --benchmark-verbose. the default "
+            "value is 'wholeUpdate'. the first 10 ticks are skipped.(this can "
+            "be set by setting '--skipticks'.",
+        ),
+    )
+    parser.add_argument(
+        "-s",
+        "--skipticks",
+        type=int,
+        default="20",
+        help=(
+            "the amount of ticks that are ignored at the beginning of very "
+            "benchmark. helps to get more consistent data, especially for "
+            "consistency plots. change this to '0' if you want to use all the "
+            "data",
+        ),
+    )
+    parser.add_argument(
+        "-t",
+        "--ticks",
+        type=int,
+        default="1000",
+        help="the default amount of ticks to run for. defaults to 1000",
+    )
+    parser.add_argument(
+        "-e",
+        "--repetitions",
+        type=int,
+        default="5",
+        help=(
+            "the number of times each map is repeated. default five. should be "
+            "higher if `--consistency` is set.",
+        ),
+    )
+    parser.add_argument(
+        "--version_link",
+        type=str,
+        help=(
+            "if you want to install a specific version of factorio. you have to "
+            "provide the complete download link to the headless version. don't "
+            "forget to update afterwards.",
+        ),
+    )
 
-parser.add_argument(
-    "-m",
-    "--install_maps",
-    type=str,
-    nargs="?",
-    const="https://walterpi.hopto.org/s/g6BLGR6wa27cNRf/download",
-    help="install maps",
-)
-parser.add_argument(
-    "-dm",
-    "--disable_mods",
-    action="store_true",
-    help="disables the usage of mod syncronisations. runs all benchmarks without enabling any mods",
-)
-
-args = parser.parse_args()
-outheader = [
-    "name",
-    "timestamp",
-    "wholeUpdate",
-    "latencyUpdate",
-    "gameUpdate",
-    "circuitNetworkUpdate",
-    "transportLinesUpdate",
-    "fluidsUpdate",
-    "heatManagerUpdate",
-    "entityUpdate",
-    "particleUpdate",
-    "mapGenerator",
-    "mapGeneratorBasicTilesSupportCompute",
-    "mapGeneratorBasicTilesSupportApply",
-    "mapGeneratorCorrectedTilesPrepare",
-    "mapGeneratorCorrectedTilesCompute",
-    "mapGeneratorCorrectedTilesApply",
-    "mapGeneratorVariations",
-    "mapGeneratorEntitiesPrepare",
-    "mapGeneratorEntitiesCompute",
-    "mapGeneratorEntitiesApply",
-    "crcComputation",
-    "electricNetworkUpdate",
-    "logisticManagerUpdate",
-    "constructionManagerUpdate",
-    "pathFinder",
-    "trains",
-    "trainPathFinder",
-    "commander",
-    "chartRefresh",
-    "luaGarbageIncremental",
-    "chartUpdate",
-    "scriptUpdate",
-]
-consistency_index: int = 0
-
-if args.consistency is not None:
-    try:
-        consistency_index = outheader.index(args.consistency)
-    except ValueError as e:
-        print("the chosen consistency variable doesn't exist:", e)
-        exit(0)
-
-if args.update:
-    if args.version_link:
-        install_factorio(args.version_link)
-    else:
-        install_factorio()
-
-if args.install_maps:
-    install_maps(args.install_maps)
+    parser.add_argument(
+        "-m",
+        "--install_maps",
+        type=str,
+        nargs="?",
+        const="https://walterpi.hopto.org/s/g6BLGR6wa27cNRf/download",
+        help="install maps",
+    )
+    parser.add_argument(
+        "-dm",
+        "--disable_mods",
+        action="store_true",
+        help="disables the usage of mod syncronisations. runs all benchmarks without enabling any mods",
+    )
+    return parser
 
 
-benchmark_folder(map_regex=args.regex)
-sync_mods("", True)
+######################################
+#
+# main
+if __name__ == "__main__":
+    atexit.register(exit_handler)
+    args = init_parser().parse_args()
+    consistency_index: int = 0
 
-# plot_benchmark_results()
+    if args.consistency is not None:
+        try:
+            consistency_index = outheader.index(args.consistency)
+        except ValueError as e:
+            print("the chosen consistency variable doesn't exist:", e)
+            exit(0)
+
+    if args.update:
+        if args.version_link:
+            install_factorio(args.version_link)
+        else:
+            install_factorio()
+
+    if args.install_maps:
+        install_maps(args.install_maps)
+
+    if args.disable_mods:
+        sync_mods(map="", disable_all=True)
+
+    benchmark_folder(
+        args.ticks,
+        args.repetitions,
+        args.disable_mods,
+        args.skipticks,
+        args.consistency,
+        map_regex=args.regex,
+    )
+
+    # plot_benchmark_results()
