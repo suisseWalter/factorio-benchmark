@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import csv
 import glob
 import itertools
@@ -6,14 +7,12 @@ import os
 import statistics
 import tarfile
 from datetime import date, datetime
-from zipfile import ZipFile
 from sys import platform as operatingsystem_codename
-from datetime import datetime, date
-import atexit
-import statistics
-import requests
-import matplotlib.pyplot as plt
+from typing import List
+from zipfile import ZipFile
 
+import matplotlib.pyplot as plt
+import requests
 
 outheader = [
     "name",
@@ -52,7 +51,8 @@ outheader = [
 ]
 
 
-def column(table, index):
+def column(table: str, index: int) -> List[str]:
+
     """Return the column of the table with the given index."""
     col = []
     for row in table:
@@ -63,7 +63,7 @@ def column(table, index):
     return col
 
 
-def exit_handler():
+def exit_handler() -> None:
     print("Terminating grasfully!")
     sync_mods("", True)
     # I should also clean up potential other files
@@ -71,7 +71,7 @@ def exit_handler():
     # also factorio.zip and maps.zip can be left over in rare cases and fail the reinstall.
 
 
-def sync_mods(map: str, disable_all: bool = False):
+def sync_mods(map: str, disable_all: bool = False) -> None:
     fmm_name = {"linux": "fmm_linux", "win32": "fmm_win32.exe", "cygwin": "fmm_win32.exe"}[
         operatingsystem_codename
     ]
@@ -83,7 +83,7 @@ def sync_mods(map: str, disable_all: bool = False):
     print(os.popen(set_mod_command).read())
 
 
-def install_maps(link):
+def install_maps(link: str) -> None:
     """download maps from the walterpi server"""
     file = requests.get(link)
     with open("maps.zip", "xb") as mapsfile:
@@ -94,8 +94,8 @@ def install_maps(link):
 
 
 def install_factorio(
-    link="https://factorio.com/get-download/stable/headless/linux64",
-):
+    link: str = "https://factorio.com/get-download/stable/headless/linux64",
+) -> None:
     """Download and extract the latest version of Factorio."""
     file = requests.get(link)
     with open("factorio.zip", "xb") as zipfile:
@@ -105,7 +105,15 @@ def install_factorio(
     os.remove("factorio.zip")
 
 
-def run_benchmark(map_, folder, ticks, runs, save=True, disable_mods=True, factorio_bin=None):
+def run_benchmark(
+    map_: str,
+    folder: str,
+    ticks: int,
+    runs: int,
+    save: bool = True,
+    disable_mods=True,
+    factorio_bin: str = None,
+) -> None:
     """Run a benchmark on the given map with the specified number of ticks and
     runs."""
     if factorio_bin is None:
@@ -146,16 +154,16 @@ def run_benchmark(map_, folder, ticks, runs, save=True, disable_mods=True, facto
 
 
 def benchmark_folder(
-    ticks,
-    runs,
-    disable_mods,
-    skipticks,
-    consistency,
-    map_regex="*",
-    factorio_bin=None,
-    folder=None,
-    filenames=None,
-):
+    ticks: int,
+    runs: int,
+    disable_mods: bool,
+    skipticks: int,
+    consistency: str,
+    map_regex: str = "*",
+    factorio_bin: str = None,
+    folder: str = None,
+    filenames: list = None,
+) -> None:
     """Run benchmarks on all maps that match the given regular expression."""
     if folder is None:
         folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
@@ -283,7 +291,9 @@ def benchmark_folder(
     print("==================")
 
 
-def plot_ups_consistency(folder, subfolder, data, ticks, skipticks, name="default"):
+def plot_ups_consistency(
+    folder: str, subfolder: str, data: str, ticks: int, skipticks: int, name: str = "default"
+) -> None:
     subfolder_path = os.path.join(folder, "graphs", subfolder)
 
     if not os.path.exists(subfolder_path):
@@ -340,7 +350,7 @@ def plot_ups_consistency(folder, subfolder, data, ticks, skipticks, name="defaul
     plt.close()
 
 
-def plot_benchmark_results(outfile, folder, subfolder, errfile):
+def plot_benchmark_results(outfile: str, folder: str, subfolder: str, errfile: str) -> None:
     """Generate plots of benchmark results."""
     # Create the output subfolder if it does not exist
     subfolder_path = os.path.join(folder, "graphs", subfolder)
