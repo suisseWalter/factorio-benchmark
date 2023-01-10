@@ -8,3 +8,5 @@ benchmark*/
 factorio/
 benchsaves2/
 saves/
+*.cmd
+
