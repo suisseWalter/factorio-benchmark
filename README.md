@@ -25,11 +25,9 @@ when running it for the first time, or when updating factorio use the -u mode to
 if you only want to run part of the testsuite you can use the -r \<regex> option to only match certain files.
 
 ### Mod support
-Mod support is provided by fmm, a tool built bui Raiguard. it should in theory be possible to configure it via a config file. but I can't figure out how. Therefore it currently just has the default configuration. This requires the `factorio/player-data.json` to contain the username and token string(`service-username` `service-token` in the file). These lines are required to be able to download mods from the factorio server. The are added to the `player-data.json` if you load the game and log in.
+Mod support is provided by fmm, a tool built by Raiguard. To use it add your factorio Username and token to the `fmm/fmm.config` file. The token can be found in your factorio profile.
 
-For windows user: just start the factorio instance and log in. after that mod support works.
-For linux user: as you can't log into the headless version, it's easiest to just coply the `player-data,json` from a working install.
-For OSX and other(BSD etc): As I haven't yet cross compiled fmm you have to do so yourself, and then put it in the fmm folder and then do the same as windows user.
+If you don't want to have any mod support pass the `-dm` flag. This will disable all mods for all runs.  
 
 ### running benchmarks
 To run clean benchmarks make sure that you have a done a fresh boot of your computer and have as few processes running as possible. (turn of any autostart programs you can.)

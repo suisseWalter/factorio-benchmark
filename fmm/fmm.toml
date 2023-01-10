@@ -1,0 +1,7 @@
+game_dir = "factorio"
+
+[portal]
+token = "token"
+username = "Username"
+
+[sets]
