@@ -146,7 +146,8 @@ def run_benchmark(
         * ticks
         / float([line.split()[-2] for line in factorio_log.split("\n") if "Performed" in line][0])
     )
-    print(f"Map benchmarked at {ups} UPS\r\n")
+    print(f"Map benchmarked at {ups} UPS")
+    print("")
     if save:
         filtered_output = [line for line in factorio_log.split("\n") if "ed" in line or "t" in line]
         with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
