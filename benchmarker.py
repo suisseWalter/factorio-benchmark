@@ -289,7 +289,8 @@ def benchmark_folder(
     with open(errout_path, "w+", newline="") as erroutfile:
         erroutfile.write(str(errfile))
 
-    print("\r\nthe benchmark is finished")
+    print("")
+    print("the benchmark is finished")
     print("==================")
 
 
