@@ -1,4 +1,4 @@
-
+*.cmd
 files.csv
 cleanfile.csv
 file.out
