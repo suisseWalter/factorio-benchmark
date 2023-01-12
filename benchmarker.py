@@ -116,7 +116,7 @@ def run_benchmark(
 ) -> None:
     """Run a benchmark on the given map with the specified number of ticks and
     runs."""
-    if factorio_bin is None:
+    if not factorio_bin:
         factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
     # setting mods
     if not disable_mods:
