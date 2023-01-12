@@ -189,7 +189,7 @@ def benchmark_folder(
     print("benchmark maps")
     print("==================")
     print("")
-    if filenames is None:
+    if not filenames:
         filenames = glob.glob(os.path.join("saves", map_regex), recursive=True)
     for filename in filenames:
         if os.path.isfile(filename):
