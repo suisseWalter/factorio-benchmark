@@ -166,7 +166,7 @@ def benchmark_folder(
     filenames: list = None,
 ) -> None:
     """Run benchmarks on all maps that match the given regular expression."""
-    if not Folder:
+    if not folder:
         folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
     os.makedirs(folder)
     os.makedirs(os.path.join(folder, "saves"))
