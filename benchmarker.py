@@ -13,6 +13,11 @@ from zipfile import ZipFile
 import matplotlib.pyplot as plt
 from pathlib import Path
 import requests
+import psutil
+import subprocess
+import json
+import re
+
 
 outheader = [
     "name",
@@ -116,6 +121,7 @@ def run_benchmark(
     save: bool = True,
     disable_mods=True,
     factorio_bin: str = None,
+    high_priority: bool = None,
 ) -> None:
     """Run a benchmark on the given map with the specified number of ticks and
     runs."""
@@ -126,35 +132,80 @@ def run_benchmark(
         sync_mods(map_)
 
     print("Running benchmark...")
-    os.dup(1)
+    # Get Version
     command = (
-        f"{factorio_bin} "
-        f'--benchmark "{map_}" '
-        f"--benchmark-ticks {ticks} "
-        f"--benchmark-runs {runs} "
-        "--benchmark-verbose all "
-        "--benchmark-sanitize"
+        f"{factorio_bin} " f'--benchmark "{map_}" ' "--benchmark-ticks 1 " "--benchmark-runs 1 "
     )
-    # print(command)
+    factorio_log_version = os.popen(command).read()
+    result = re.search(r"; Factorio (\d+\.\d+\.\d+)", factorio_log_version)
+    if result:
+        version = str(
+            result[1]
+            + {
+                "linux": " Linux",
+                "win32": " Windows",
+                "cygwin": " Cygwin",
+            }[operatingsystem_codename]
+        )
 
-    factorio_log = os.popen(command).read()
+    # psutil.Popen on Linux it doesn't work well with str()
+    command = list()
+    command.append(str(factorio_bin))
+    command.extend(["--benchmark", str(map_)])
+    command.extend(["--benchmark-ticks", str(ticks)])
+    command.extend(["--benchmark-runs", str(runs)])
+    command.extend(["--benchmark-verbose", "all"])
+    command.append("--benchmark-sanitize")
+    if high_priority is True:
+        priority = {
+            "linux": -20,
+            "win32": 128,  # (Linux) psutil.HIGH_PRIORITY_CLASS AttributeError: module 'psutil' has no attribute 'HIGH_PRIORITY_CLASS'
+            "cygwin": 128,  # (Linux) psutil.HIGH_PRIORITY_CLASS AttributeError: module 'psutil' has no attribute 'HIGH_PRIORITY_CLASS'
+        }[operatingsystem_codename]
+        print("nice = ", priority)
+        process = psutil.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process.nice(priority)
+        factorio_log, err = map(
+            lambda a: a.decode("utf-8").replace("\r", ""), process.communicate()
+        )
+    else:
+        factorio_log = os.popen(command).read()
+        err = ""
 
     if "Performed" not in factorio_log:
         print("Benchmark failed")
         print(factorio_log)
-        return
-    # print(factorio_log)
-    ups = int(
-        1000
-        * ticks
-        / float([line.split()[-2] for line in factorio_log.split("\n") if "Performed" in line][0])
-    )
-    print(f"Map benchmarked at {ups} UPS")
-    print("")
-    if save:
-        filtered_output = [line for line in factorio_log.split("\n") if "ed" in line or "t" in line]
-        with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
-            f.write("\n".join(filtered_output))
+        print(err)
+    else:
+        if save:
+            # print(factorio_log)
+            print(version)
+            avgs = [
+                float(line.split()[-2]) / ticks
+                for line in factorio_log.split("\n")
+                if "Performed" in line
+            ]
+            avg = statistics.mean(avgs)
+            ups = 1000 / avg
+            avgs = [f"{i:.3f}" for i in avgs]
+            print("Map benchmarked at:")
+            print("avg = {:.3f} ms {}".format(avg, avgs))
+            print("{:.3f} UPS".format(ups))
+            print()
+            # with open(os.path.join(folder, "saves", md5 + ".all"), "x") as f:
+            #    print(factorio_log_version, file=f)
+            out = dict()
+            out["version"] = version
+            out["avg"] = avg
+            out["ups"] = ups
+            out["avgs"] = avgs
+            filtered_output = list()
+            filtered_output.append(str(json.dumps(out)))
+            filtered_output.extend(
+                [line for line in factorio_log.split("\n") if "ed" in line or "t" in line]
+            )
+            with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
+                f.write("\n".join(filtered_output))
 
 
 def benchmark_folder(
@@ -167,6 +218,7 @@ def benchmark_folder(
     factorio_bin: str = None,
     folder: str = None,
     filenames: list = None,
+    high_priority: bool = None,
 ) -> None:
     """Run benchmarks on all maps that match the given regular expression."""
     if not folder:
@@ -184,6 +236,7 @@ def benchmark_folder(
         save=False,
         disable_mods=disable_mods,
         factorio_bin=factorio_bin,
+        high_priority=high_priority,
     )
     print("Finished warming up, starting the actual benchmark...")
 
@@ -206,6 +259,7 @@ def benchmark_folder(
                 save=True,
                 disable_mods=disable_mods,
                 factorio_bin=factorio_bin,
+                high_priority=high_priority,
             )
 
     print("==================")
@@ -475,7 +529,6 @@ def init_parser():
             "forget to update afterwards.",
         ),
     )
-
     parser.add_argument(
         "-m",
         "--install_maps",
@@ -489,6 +542,13 @@ def init_parser():
         "--disable_mods",
         action="store_true",
         help="disables the usage of mod syncronisations. runs all benchmarks without enabling any mods",
+    )
+    parser.add_argument(
+        "-hp",
+        "--high_priority",
+        action="store_true",
+        default=False,
+        help="Increases the priority for the 'factorio' process. On Linux requires 'sudo'",
     )
     return parser
 
@@ -528,6 +588,7 @@ if __name__ == "__main__":
         args.skipticks,
         args.consistency,
         map_regex=args.regex,
+        high_priority=args.high_priority,
     )
 
     # plot_benchmark_results()
