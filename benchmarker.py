@@ -386,6 +386,9 @@ def plot_benchmark_results(outfile: str, folder: str, subfolder: str, errfile: s
 
 
 def create_mods_dir():
+    """creates a folder: 'factorio/mods'"""
+    """creates a file: 'factorio/mods/mod-list.json'"""
+    """copies the file from 'fmm/mod-settings.dat' to 'factorio/mods/mod-settings.dat'"""
     os.makedirs(os.path.join("factorio", "mods"), exist_ok=True)
     mod_list_json_file = os.path.join("factorio", "mods", "mod-list.json")
     if not os.path.exists(mod_list_json_file):
