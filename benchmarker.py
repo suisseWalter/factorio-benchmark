@@ -263,7 +263,7 @@ def benchmark_folder(
                 plot_ups_consistency(
                     folder=folder,
                     subfolder=old_subfolder_name,
-                    data=[a[consistency_index - 1] for a in inlist],
+                    data=[a[consistency_index] for a in inlist],
                     ticks=ticks,
                     skipticks=skipticks,
                     name="consistency_" + file_name + "_" + consistency,
