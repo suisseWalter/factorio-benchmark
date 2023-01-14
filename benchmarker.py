@@ -66,6 +66,7 @@ def get_factorio_version(factorio_bin: str, full: bool = False) -> str:
     factorio_log_version = os.popen(f"{factorio_bin} --version").read()
     result = factorio_log_version.splitlines()[0].split()[1]
     if full:
+        result += " " + factorio_log_version.splitlines()[0].split()[4][:-1]
         result += " " + factorio_log_version.splitlines()[0].split()[5][:-1]
     return result
 
