@@ -7,15 +7,14 @@ import os
 import statistics
 import tarfile
 from datetime import date, datetime
-from sys import platform as operatingsystem_codename
-from typing import List
-from zipfile import ZipFile
-import matplotlib.pyplot as plt
 from pathlib import Path
+from sys import platform as operatingsystem_codename
+from zipfile import ZipFile
+
+import matplotlib.pyplot as plt
 import requests
 
 outheader = [
-    "name",
     "timestamp",
     "wholeUpdate",
     "latencyUpdate",
@@ -49,18 +48,6 @@ outheader = [
     "chartUpdate",
     "scriptUpdate",
 ]
-
-
-def column(table: str, index: int) -> List[str]:
-
-    """Return the column of the table with the given index."""
-    col = []
-    for row in table:
-        try:
-            col.append(row[index])
-        except Exception:  # noqa: PIE786
-            continue
-    return col
 
 
 def exit_handler() -> None:
@@ -114,8 +101,8 @@ def run_benchmark(
     ticks: int,
     runs: int,
     save: bool = True,
-    disable_mods=True,
-    factorio_bin: str = None,
+    disable_mods: bool = True,
+    factorio_bin: str | None = None,
 ) -> None:
     """Run a benchmark on the given map with the specified number of ticks and
     runs."""
@@ -126,7 +113,6 @@ def run_benchmark(
         sync_mods(map_)
 
     print("Running benchmark...")
-    os.dup(1)
     command = (
         f"{factorio_bin} "
         f'--benchmark "{map_}" '
@@ -164,9 +150,9 @@ def benchmark_folder(
     skipticks: int,
     consistency: str,
     map_regex: str = "*",
-    factorio_bin: str = None,
-    folder: str = None,
-    filenames: list = None,
+    factorio_bin: str | None = None,
+    folder: str | None = None,
+    filenames: list[str] | None = None,
 ) -> None:
     """Run benchmarks on all maps that match the given regular expression."""
     if not folder:
@@ -210,8 +196,9 @@ def benchmark_folder(
 
     print("==================")
     print("creating graphs")
-    outfile = [outheader]
-    errfile = [outheader[:]]
+    processed_table: list[list[float]] = []
+    maps: list[str] = []
+    errfile: list[list[int]] = []
     old_subfolder_name = ""
     # print(
     #     sorted(
@@ -243,15 +230,17 @@ def benchmark_folder(
             old_subfolder_name = subfolder_name
         # print(subfolder_name)
         if subfolder_name != old_subfolder_name:
-            plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
-            outfile = [outheader]
+            plot_benchmark_results(
+                processed_table, outheader, maps, folder, old_subfolder_name, errfile
+            )
+            processed_table = []
+            maps = []
             old_subfolder_name = subfolder_name
 
         with open(file, "r", newline="") as cfile:
 
             cfilestr = list(csv.reader(cfile, dialect="excel"))
-            inlist = []
-            errinlist = []
+            inlist: list[list[float]] = []
 
             for i in cfilestr[0 : len(cfilestr)]:
                 try:
@@ -259,38 +248,28 @@ def benchmark_folder(
                         # figure out how to actually skip these ticks.
                         continue
                     inlist.append([t / 1000000 for t in list(map(int, i[1:-1]))])
-                    if i[0] != "t0":
-                        errinlist.append(list(map(int, i[1:-1])))
                 except Exception:  # noqa: PIE786
                     pass
                     # print("can't convert to int")
 
-            outrow = [file_name]
-
-            outrowerr = [file_name + "_stdev"]
+            processed_line = []
+            maps.append(file_name)
             for rowi in range(32):
-                outrow.append(statistics.mean(column(inlist, rowi)))
-                outrowerr.append(statistics.stdev(column(errinlist, rowi)))
-            outfile.append(outrow)
-            errfile.append(outrowerr)
+                processed_line.append(statistics.mean([a[rowi] for a in inlist]))
+            processed_table.append(processed_line)
 
             if consistency is not None:
                 # do the consistency plot
                 plot_ups_consistency(
                     folder=folder,
                     subfolder=old_subfolder_name,
-                    data=column(inlist, consistency_index - 1),
+                    data=[a[consistency_index - 1] for a in inlist],
                     ticks=ticks,
                     skipticks=skipticks,
                     name="consistency_" + file_name + "_" + consistency,
                 )
 
-    plot_benchmark_results(outfile, folder, old_subfolder_name, errfile)
-
-    print("saving benchmark results")
-    errout_path = os.path.join(folder, "stdev.csv")
-    with open(errout_path, "w+", newline="") as erroutfile:
-        erroutfile.write(str(errfile))
+    plot_benchmark_results(processed_table, outheader, maps, folder, old_subfolder_name, errfile)
 
     print("")
     print("the benchmark is finished")
@@ -298,7 +277,12 @@ def benchmark_folder(
 
 
 def plot_ups_consistency(
-    folder: str, subfolder: str, data: str, ticks: int, skipticks: int, name: str = "default"
+    folder: str,
+    subfolder: str,
+    data: list[float],
+    ticks: int,
+    skipticks: int,
+    name: str = "default",
 ) -> None:
     subfolder_path = os.path.join(folder, "graphs", subfolder)
 
@@ -314,7 +298,7 @@ def plot_ups_consistency(
         darray.append(data[(ticks - skipticks) * i : (ticks - skipticks) * (i + 1)])
     for i in range(len(darray[0])):
         # first discard the highest value as that can frequently be an outlier.
-        c = sorted(column(darray, i))[:-1]
+        c = sorted([a[i] for a in darray])[:-1]
         med.append(statistics.median(c))
         maxi.append(max(c))
         mini.append(min(c))
@@ -356,36 +340,42 @@ def plot_ups_consistency(
     plt.close()
 
 
-def plot_benchmark_results(outfile: str, folder: str, subfolder: str, errfile: str) -> None:
+def plot_benchmark_results(
+    data_table: list[list[float]],
+    titles: list[str],
+    maps: list[str],
+    folder: str,
+    subfolder: str,
+    errfile: list[list[int]],
+) -> None:
     """Generate plots of benchmark results."""
     # Create the output subfolder if it does not exist
     subfolder_path = os.path.join(folder, "graphs", subfolder)
     if not os.path.exists(subfolder_path):
         os.makedirs(subfolder_path)
 
-    for col in itertools.chain(range(1, 12), range(23, 33)):
+    for col in itertools.chain(range(1, 11), range(22, 32)):
         fig, ax = plt.subplots()
-        maps = column(outfile, 0)[1:]
-        update = column(outfile, col)[1:]
+        update = [a[col] for a in data_table]
         hbars = ax.barh(maps, update)
         ax.bar_label(
             hbars,
-            labels=[f"{x:.3f}" for x in column(outfile, col)[1:]],
+            labels=[f"{x:.3f}" for x in [a[col] for a in data_table]],
             padding=3,
         )
         ax.margins(0.1, 0.05)
-        ax.set_title(outfile[0][col])
+        ax.set_title(titles[col])
         ax.set_xlabel("Mean frametime [ms/frame]")
         ax.set_ylabel("Map name")
         plt.tight_layout()
         # Use os.path.join to build the file path for the output image
-        out_path = os.path.join(subfolder_path, f"{outfile[0][col]}.png")
+        out_path = os.path.join(subfolder_path, f"{titles[col]}.png")
         plt.savefig(out_path)
         plt.clf()
         plt.close()
 
 
-def create_mods_dir():
+def create_mods_dir() -> None:
     """creates a folder: 'factorio/mods'"""
     """creates a file: 'factorio/mods/mod-list.json'"""
     """copies the file from 'fmm/mod-settings.dat' to 'factorio/mods/mod-settings.dat'"""
@@ -397,12 +387,12 @@ def create_mods_dir():
     mod_settings_dat_file = os.path.join("factorio", "mods", "mod-settings.dat")
     if not os.path.exists(mod_settings_dat_file):
         # copy the file 'mod-settings.dat'
-        source = Path(os.path.join("fmm", "mod-settings.dat"))
-        destination = Path(mod_settings_dat_file)
+        source: Path = Path(os.path.join("fmm", "mod-settings.dat"))
+        destination: Path = Path(mod_settings_dat_file)
         destination.write_bytes(source.read_bytes())
 
 
-def init_parser():
+def init_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Benchmark Factorio maps. " 'The default configuration is `-r "**" -s 20 -t 1000 -e 5'
@@ -418,7 +408,7 @@ def init_parser():
         "-r",
         "--regex",
         default="**",
-        help=(
+        help=str(
             "Regular expression to match map names to benchmark. "
             "The regex either needs to be escaped by quotes or every special "
             "character needs to be escaped. use ** if you want to match "
@@ -430,7 +420,7 @@ def init_parser():
         "--consistency",
         nargs="?",
         const="wholeUpdate",
-        help=(
+        help=str(
             "generates a update time consistency plot for the given metric. It "
             "has to be a metric accessible by --benchmark-verbose. the default "
             "value is 'wholeUpdate'. the first 10 ticks are skipped.(this can "
@@ -442,7 +432,7 @@ def init_parser():
         "--skipticks",
         type=int,
         default="20",
-        help=(
+        help=str(
             "the amount of ticks that are ignored at the beginning of very "
             "benchmark. helps to get more consistent data, especially for "
             "consistency plots. change this to '0' if you want to use all the "
@@ -461,7 +451,7 @@ def init_parser():
         "--repetitions",
         type=int,
         default="5",
-        help=(
+        help=str(
             "the number of times each map is repeated. default five. should be "
             "higher if `--consistency` is set.",
         ),
@@ -469,7 +459,7 @@ def init_parser():
     parser.add_argument(
         "--version_link",
         type=str,
-        help=(
+        help=str(
             "if you want to install a specific version of factorio. you have to "
             "provide the complete download link to the headless version. don't "
             "forget to update afterwards.",
