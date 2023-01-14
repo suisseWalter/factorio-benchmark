@@ -140,7 +140,7 @@ def run_benchmark(
         )
 
     # psutil.Popen on Linux it doesn't work well with str()
-    command: list[str] = list()
+    command: list[str] = []
     command.append(str(factorio_bin))
     command.extend(["--benchmark", str(map_)])
     command.extend(["--benchmark-ticks", str(ticks)])
@@ -188,7 +188,7 @@ def run_benchmark(
             out["avg"] = avg
             out["ups"] = ups
             out["avgs"] = avgs_str
-            filtered_output = list()
+            filtered_output = []
             filtered_output.append(str(json.dumps(out)))
             filtered_output.extend(
                 [line for line in factorio_log.split("\n") if "ed" in line or "t" in line]
