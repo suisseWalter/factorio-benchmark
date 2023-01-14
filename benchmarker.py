@@ -9,14 +9,12 @@ import tarfile
 from datetime import date, datetime
 from pathlib import Path
 from sys import platform as operatingsystem_codename
-from typing import Any
 from zipfile import ZipFile
 
 import matplotlib.pyplot as plt
 import requests
 
 outheader = [
-    "name",
     "timestamp",
     "wholeUpdate",
     "latencyUpdate",
@@ -50,18 +48,6 @@ outheader = [
     "chartUpdate",
     "scriptUpdate",
 ]
-
-
-def column(table: list[list[Any]], index: int) -> list[Any]:
-
-    """Return the column of the table with the given index."""
-    col = []
-    for row in table:
-        try:
-            col.append(row[index])
-        except Exception:  # noqa: PIE786
-            continue
-    return col
 
 
 def exit_handler() -> None:
@@ -127,7 +113,6 @@ def run_benchmark(
         sync_mods(map_)
 
     print("Running benchmark...")
-    os.dup(1)
     command = (
         f"{factorio_bin} "
         f'--benchmark "{map_}" '
@@ -211,7 +196,7 @@ def benchmark_folder(
 
     print("==================")
     print("creating graphs")
-    processed_table: list[list[int]] = []
+    processed_table: list[list[float]] = []
     maps: list[str] = []
     errfile: list[list[int]] = []
     old_subfolder_name = ""
@@ -270,7 +255,7 @@ def benchmark_folder(
             processed_line = []
             maps.append(file_name)
             for rowi in range(32):
-                processed_line.append(statistics.mean(column(inlist, rowi)))
+                processed_line.append(statistics.mean([a[rowi] for a in inlist]))
             processed_table.append(processed_line)
 
             if consistency is not None:
@@ -278,7 +263,7 @@ def benchmark_folder(
                 plot_ups_consistency(
                     folder=folder,
                     subfolder=old_subfolder_name,
-                    data=column(inlist, consistency_index - 1),
+                    data=[a[consistency_index - 1] for a in inlist],
                     ticks=ticks,
                     skipticks=skipticks,
                     name="consistency_" + file_name + "_" + consistency,
@@ -292,7 +277,12 @@ def benchmark_folder(
 
 
 def plot_ups_consistency(
-    folder: str, subfolder: str, data: list[int], ticks: int, skipticks: int, name: str = "default"
+    folder: str,
+    subfolder: str,
+    data: list[float],
+    ticks: int,
+    skipticks: int,
+    name: str = "default",
 ) -> None:
     subfolder_path = os.path.join(folder, "graphs", subfolder)
 
@@ -308,7 +298,7 @@ def plot_ups_consistency(
         darray.append(data[(ticks - skipticks) * i : (ticks - skipticks) * (i + 1)])
     for i in range(len(darray[0])):
         # first discard the highest value as that can frequently be an outlier.
-        c = sorted(column(darray, i))[:-1]
+        c = sorted([a[i] for a in darray])[:-1]
         med.append(statistics.median(c))
         maxi.append(max(c))
         mini.append(min(c))
@@ -351,7 +341,7 @@ def plot_ups_consistency(
 
 
 def plot_benchmark_results(
-    data_table: list[list[int]],
+    data_table: list[list[float]],
     titles: list[str],
     maps: list[str],
     folder: str,
@@ -366,11 +356,11 @@ def plot_benchmark_results(
 
     for col in itertools.chain(range(1, 11), range(22, 32)):
         fig, ax = plt.subplots()
-        update = column(data_table, col)
+        update = [a[col] for a in data_table]
         hbars = ax.barh(maps, update)
         ax.bar_label(
             hbars,
-            labels=[f"{x:.3f}" for x in column(data_table, col)],
+            labels=[f"{x:.3f}" for x in [a[col] for a in data_table]],
             padding=3,
         )
         ax.margins(0.1, 0.05)
@@ -379,7 +369,7 @@ def plot_benchmark_results(
         ax.set_ylabel("Map name")
         plt.tight_layout()
         # Use os.path.join to build the file path for the output image
-        out_path = os.path.join(subfolder_path, f"{titles[col+1]}.png")
+        out_path = os.path.join(subfolder_path, f"{titles[col]}.png")
         plt.savefig(out_path)
         plt.clf()
         plt.close()

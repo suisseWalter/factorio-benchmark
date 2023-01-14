@@ -3,7 +3,7 @@ The goal is, to be able to test different maps quickly and be able to compare th
 
 # install
 Python 3.10 is required.
-Also install all they required Python packages by running `pip install -r requirements.txt`.
+Also install all The required Python packages by running `pip install -r requirements.txt`.
 ### Linux
 just run `benchmarker.py -u -m` to install the latest version of factorio and download some sample maps. This will also directly run the programm a first time.
 
