@@ -3,8 +3,10 @@ import atexit
 import csv
 import glob
 import itertools
+import json
 import os
 import statistics
+import subprocess
 import tarfile
 from datetime import date, datetime
 from pathlib import Path
@@ -12,12 +14,8 @@ from sys import platform as operatingsystem_codename
 from zipfile import ZipFile
 
 import matplotlib.pyplot as plt
-import requests
 import psutil
-import subprocess
-import json
-import re
-
+import requests
 
 outheader = [
     "timestamp",
@@ -61,6 +59,16 @@ def exit_handler() -> None:
     # I should also clean up potential other files
     # such as the lock file (factorio/.lock on linux)
     # also factorio.zip and maps.zip can be left over in rare cases and fail the reinstall.
+
+
+def get_factorio_version(factorio_bin: str, full: bool = False) -> str:
+    """returns the version string of the installed factorio instance"""
+    factorio_log_version = os.popen(f"{factorio_bin} --version").read()
+    result = factorio_log_version.splitlines()[0].split()[1]
+    if full:
+        result += " " + factorio_log_version.splitlines()[0].split()[4][:-1]
+        result += " " + factorio_log_version.splitlines()[0].split()[5][:-1]
+    return result
 
 
 def sync_mods(map: str, disable_all: bool = False) -> None:
@@ -125,28 +133,14 @@ def run_benchmark(
 
     print("Running benchmark...")
     # Get Version
-    factorio_log_version = os.popen(
-        f'{factorio_bin} --benchmark "{map_}" --benchmark-ticks 1 --benchmark-runs 1'
-    ).read()
-    result = re.search(r"; Factorio (\d+\.\d+\.\d+)", factorio_log_version)
-    if result:
-        version = str(
-            result[1]
-            + {
-                "linux": " Linux",
-                "win32": " Windows",
-                "cygwin": " Cygwin",
-            }[operatingsystem_codename]
-        )
-
+    version: str = get_factorio_version(factorio_bin, True)
     # psutil.Popen on Linux it doesn't work well with str()
-    command: list[str] = []
-    command.append(str(factorio_bin))
+    command: list[str] = [str(factorio_bin)]
     command.extend(["--benchmark", str(map_)])
     command.extend(["--benchmark-ticks", str(ticks)])
     command.extend(["--benchmark-runs", str(runs)])
     command.extend(["--benchmark-verbose", "all"])
-    command.append("--benchmark-sanitize")
+    command.extend(["--benchmark-sanitize"])
     if high_priority is True:
         priority = {
             "linux": -20,
@@ -188,8 +182,7 @@ def run_benchmark(
             out["avg"] = avg
             out["ups"] = ups
             out["avgs"] = avgs_str
-            filtered_output = []
-            filtered_output.append(str(json.dumps(out)))
+            filtered_output = [str(json.dumps(out))]
             filtered_output.extend(
                 [line for line in factorio_log.split("\n") if "ed" in line or "t" in line]
             )
