@@ -8,15 +8,21 @@ import os
 import statistics
 import subprocess
 import tarfile
+import time
+from copy import copy, deepcopy
 from datetime import date, datetime
 from pathlib import Path
+from random import random
 from sys import platform as operatingsystem_codename
+from typing import Any
 from zipfile import ZipFile
 
+import factorio_rcon
 import matplotlib.pyplot as plt
 import psutil
 import requests
 
+threadreg: list[subprocess.Popen[Any]] = []
 outheader = [
     "timestamp",
     "wholeUpdate",
@@ -56,6 +62,14 @@ outheader = [
 def exit_handler() -> None:
     print("Terminating grasfully!")
     sync_mods("", True)
+    for thread in threadreg:
+        thread.kill()
+    try:
+        os.remove(os.path.join("factorio", ".lock"))
+        print("factorio was running, deleted the lock file. it might still be running.")
+    except Exception:  # noqa: PIE786
+        print("factorio was already stopped")
+        pass
     # I should also clean up potential other files
     # such as the lock file (factorio/.lock on linux)
     # also factorio.zip and maps.zip can be left over in rare cases and fail the reinstall.
@@ -69,6 +83,44 @@ def get_factorio_version(factorio_bin: str, full: bool = False) -> str:
         result += " " + factorio_log_version.splitlines()[0].split()[4][:-1]
         result += " " + factorio_log_version.splitlines()[0].split()[5][:-1]
     return result
+
+
+def migrate_map(factorio_bin: str, map: str, inplace: bool) -> None:
+    """migrate map to a new factorio version."""
+    print("migrating map:" + map)
+    if not inplace:
+        oldmap = Path(map)
+        newmap = Path(
+            os.path.splitext(map)[0] + get_factorio_version(factorio_bin).replace(".", "") + ".zip"
+        )
+        newmap.write_bytes(oldmap.read_bytes())
+        map = str(newmap)
+    sync_mods(map)
+    portend = int(random() * 100)
+    command = f'{os.path.abspath(factorio_bin)} --start-server "{os.path.abspath(map)}" --port 122{int(random()*100)} --rcon-port 123{portend} --rcon-password 1234 '
+    print(command)
+    proc: subprocess.Popen[Any] = subprocess.Popen(command.split())
+    threadreg.append(copy(proc))
+    time.sleep(20)
+    client = factorio_rcon.RCONClient("127.0.0.1", 12300 + portend, "1234")
+    # client.connect()
+    print(client)
+
+    time.sleep(10)
+    resp = client.send_command("/server-save ")
+    time.sleep(10)
+    print(resp)
+    time.sleep(10)
+    client.close()
+    proc.kill()
+    time.sleep(10)
+    try:
+        # yes I know this is the most backwards way to do it,but it at least gets factorio ready for the next attempt.
+        os.remove(os.path.join("factorio", ".lock"))
+        print("now there is a orphaned factorio instance ghosting around.")
+        exit()
+    except Exception:  # noqa: PIE786
+        print("process killed properly")
 
 
 def sync_mods(map: str, disable_all: bool = False) -> None:
@@ -188,6 +240,26 @@ def run_benchmark(
             )
             with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
                 f.write("\n".join(filtered_output))
+
+
+def migrate_folder(
+    inplace: bool = False,
+    factorio_bin: str | None = None,
+    map_regex: str = "*",
+    filenames: list[str] | None = None,
+) -> None:
+
+    if not filenames:
+        filenames = glob.glob(os.path.join("saves", map_regex), recursive=True)
+
+    if not factorio_bin:
+        factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
+
+    for filename in deepcopy(filenames):
+        if os.path.isfile(filename):
+            migrate_map(factorio_bin, filename, inplace)
+
+    exit()
 
 
 def benchmark_folder(
@@ -536,6 +608,16 @@ def init_parser() -> argparse.ArgumentParser:
         default=False,
         help="Increases the priority for the 'factorio' process. On Linux requires 'sudo'",
     )
+    parser.add_argument(
+        "-mi",
+        "--migrate",
+        nargs="?",
+        const="copy",
+        help=str(
+            "Migrates all the selected maps to the currently installed factorio version."
+            "By default it will migrate a copy of the map. To migrate in place add `inplace` as a argument"
+        ),
+    )
     return parser
 
 
@@ -554,16 +636,26 @@ if __name__ == "__main__":
             print("the chosen consistency variable doesn't exist:", e)
             exit(0)
 
+    if args.migrate is not None:
+
+        if args.migrate == "inplace":
+            migrate_folder(True, map_regex=args.regex)
+        elif args.migrate == "copy":
+            migrate_folder(False, map_regex=args.regex)
+        exit()
+
     if args.update:
         if args.version_link:
             install_factorio(args.version_link)
         else:
             install_factorio()
+        create_mods_dir()
+        exit()
 
     if args.install_maps:
         install_maps(args.install_maps)
+        exit()
 
-    create_mods_dir()
     if args.disable_mods:
         sync_mods(map="", disable_all=True)
 
