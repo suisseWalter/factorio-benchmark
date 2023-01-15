@@ -33,6 +33,10 @@ If you don't want to have any mod support pass the `-dm` flag. This will disable
 ### running benchmarks
 To run clean benchmarks make sure that you have a done a fresh boot of your computer and have as few processes running as possible. (turn of any autostart programs you can.)
 
+### Migration
+It can automatically migrate save files to the installed version of Factorio. Use `-mi` and provide the saves which should be converted via `-r`. By default, it will create a copy of the map and append the version number at the end.
+
+Also, it's possible to run some custom scripts using the `--custom-script "script" ` option together with `-mi`. This custom script will be run on the ingame console as `script`. Therefore it's required to include the `/c ` part in your script. When passing a script to `--custom-script` it needs to be escaped with `"` otherwise it won't work.
 ### Options:
 the configurations options are as follows:
 options:

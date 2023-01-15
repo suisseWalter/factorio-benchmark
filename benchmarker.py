@@ -84,7 +84,7 @@ def get_factorio_version(factorio_bin: str, full: bool = False) -> str:
     return result
 
 
-def migrate_map(factorio_bin: str, map: str, inplace: bool) -> None:
+def migrate_map(factorio_bin: str, map: str, inplace: bool, custom_script: str | None) -> None:
     """migrate map to a new factorio version."""
     print("migrating map:" + map)
     if not inplace:
@@ -113,11 +113,16 @@ def migrate_map(factorio_bin: str, map: str, inplace: bool) -> None:
             client = factorio_rcon.RCONClient("127.0.0.1", 12345, "1234")
 
         if "New RCON connection from IP ADD" in line:
+            if custom_script is not None:
+                print("running custom script...")
+                print(custom_script)
+                resp = client.send_command(custom_script)
+                print(resp)
             print("saving migrated map...")
             resp = client.send_command("/server-save ")
             print(resp)
 
-        if "AppManagerStates.cpp:1837: Saving finished" in line:
+        if "Saving finished" in line:
             print("map saved, terminating factorio...")
             client.close()
             proc.terminate()
@@ -258,6 +263,7 @@ def migrate_folder(
     factorio_bin: str | None = None,
     map_regex: str = "*",
     filenames: list[str] | None = None,
+    custom_script: str | None = None,
 ) -> None:
 
     if not filenames:
@@ -268,7 +274,7 @@ def migrate_folder(
 
     for filename in deepcopy(filenames):
         if os.path.isfile(filename):
-            migrate_map(factorio_bin, filename, inplace)
+            migrate_map(factorio_bin, filename, inplace, custom_script)
 
     exit()
 
@@ -629,6 +635,7 @@ def init_parser() -> argparse.ArgumentParser:
             "By default it will migrate a copy of the map. To migrate in place add `inplace` as a argument"
         ),
     )
+    parser.add_argument("--custom_script", type=str, help="run a custom lua script upon migration.")
     return parser
 
 
@@ -650,9 +657,15 @@ if __name__ == "__main__":
     if args.migrate is not None:
 
         if args.migrate == "inplace":
-            migrate_folder(True, map_regex=args.regex)
+            if args.custom_script:
+                migrate_folder(True, map_regex=args.regex, custom_script=args.custom_script)
+            else:
+                migrate_folder(True, map_regex=args.regex)
         elif args.migrate == "copy":
-            migrate_folder(False, map_regex=args.regex)
+            if args.custom_script:
+                migrate_folder(False, map_regex=args.regex, custom_script=args.custom_script)
+            else:
+                migrate_folder(False, map_regex=args.regex)
         exit()
 
     if args.update:
