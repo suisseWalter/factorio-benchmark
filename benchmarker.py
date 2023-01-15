@@ -8,11 +8,9 @@ import os
 import statistics
 import subprocess
 import tarfile
-import time
-from copy import copy, deepcopy
+from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
-from random import random
 from sys import platform as operatingsystem_codename
 from typing import Any
 from zipfile import ZipFile
@@ -60,10 +58,11 @@ outheader = [
 
 
 def exit_handler() -> None:
-    print("Terminating grasfully!")
     sync_mods("", True)
     for thread in threadreg:
-        thread.kill()
+        thread.terminate()
+        exit_code = thread.wait()
+        print("exit_code", exit_code)
     try:
         os.remove(os.path.join("factorio", ".lock"))
         print("factorio was running, deleted the lock file. it might still be running.")
@@ -96,31 +95,43 @@ def migrate_map(factorio_bin: str, map: str, inplace: bool) -> None:
         newmap.write_bytes(oldmap.read_bytes())
         map = str(newmap)
     sync_mods(map)
-    portend = int(random() * 100)
-    command = f'{os.path.abspath(factorio_bin)} --start-server "{os.path.abspath(map)}" --port 122{int(random()*100)} --rcon-port 123{portend} --rcon-password 1234 '
-    print(command)
-    proc: subprocess.Popen[Any] = subprocess.Popen(command.split())
-    threadreg.append(copy(proc))
-    time.sleep(20)
-    client = factorio_rcon.RCONClient("127.0.0.1", 12300 + portend, "1234")
-    # client.connect()
-    print(client)
 
-    time.sleep(10)
-    resp = client.send_command("/server-save ")
-    time.sleep(10)
-    print(resp)
-    time.sleep(10)
-    client.close()
-    proc.kill()
-    time.sleep(10)
-    try:
-        # yes I know this is the most backwards way to do it,but it at least gets factorio ready for the next attempt.
-        os.remove(os.path.join("factorio", ".lock"))
-        print("now there is a orphaned factorio instance ghosting around.")
-        exit()
-    except Exception:  # noqa: PIE786
-        print("process killed properly")
+    command = f"{os.path.abspath(factorio_bin)}  --start-server  {os.path.abspath(map)}  --port  12245  --rcon-port  12345  --rcon-password  1234"
+    print(command)
+    proc = psutil.Popen(args=command.split("  "), stdout=subprocess.PIPE)
+    print("starting factorio server...")
+    threadreg.append(proc)
+    line: str = ""
+    lastlines = ["", "", "", "", "", "", "", ""]
+    while True:
+        lastlines.append(line)
+        lastlines.pop(0)
+        line = proc.stdout.readline().decode().rstrip()
+
+        if "Starting RCON interface at IP ADD" in line:
+            print("connecting to game...")
+            client = factorio_rcon.RCONClient("127.0.0.1", 12345, "1234")
+
+        if "New RCON connection from IP ADD" in line:
+            print("saving migrated map...")
+            resp = client.send_command("/server-save ")
+            print(resp)
+
+        if "AppManagerStates.cpp:1837: Saving finished" in line:
+            print("map saved, terminating factorio...")
+            client.close()
+            proc.terminate()
+            exit_code = proc.wait()
+            print("terminated with exit code: ", exit_code)
+            print()
+            threadreg.remove(proc)
+
+            break
+        if line == "":
+            print(lastlines[1])
+            print("factorio crashed")
+            threadreg.remove(proc)
+            break
 
 
 def sync_mods(map: str, disable_all: bool = False) -> None:
