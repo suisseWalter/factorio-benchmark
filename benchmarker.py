@@ -1,7 +1,6 @@
 import argparse
 import atexit
 import csv
-import glob
 import itertools
 import json
 import os
@@ -10,7 +9,7 @@ import subprocess
 import tarfile
 from copy import deepcopy
 from datetime import date, datetime
-from pathlib import Path
+from pathlib import Path, PurePath
 from sys import platform as operatingsystem_codename
 from typing import Any
 from zipfile import ZipFile
@@ -58,13 +57,13 @@ outheader = [
 
 
 def exit_handler() -> None:
-    sync_mods("", True)
+    sync_mods(PurePath(""), True)
     for thread in threadreg:
         thread.terminate()
         exit_code = thread.wait()
         print("exit_code", exit_code)
     try:
-        os.remove(os.path.join("factorio", ".lock"))
+        os.remove(PurePath("factorio", ".lock"))
         print("factorio was running, deleted the lock file. it might still be running.")
     except Exception:  # noqa: PIE786
         print("factorio was already stopped")
@@ -74,7 +73,7 @@ def exit_handler() -> None:
     # also factorio.zip and maps.zip can be left over in rare cases and fail the reinstall.
 
 
-def get_factorio_version(factorio_bin: str, full: bool = False) -> str:
+def get_factorio_version(factorio_bin: PurePath, full: bool = False) -> str:
     """returns the version string of the installed factorio instance"""
     factorio_log_version = os.popen(f"{factorio_bin} --version").read()
     result = factorio_log_version.splitlines()[0].split()[1]
@@ -84,19 +83,26 @@ def get_factorio_version(factorio_bin: str, full: bool = False) -> str:
     return result
 
 
-def migrate_map(factorio_bin: str, map: str, inplace: bool, custom_script: str | None) -> None:
+def migrate_map(
+    factorio_bin: PurePath, map: PurePath, inplace: bool, custom_script: str | None
+) -> None:
     """migrate map to a new factorio version."""
-    print("migrating map:" + map)
+    print("migrating map:" + str(map))
     if not inplace:
         oldmap = Path(map)
         newmap = Path(
-            os.path.splitext(map)[0] + get_factorio_version(factorio_bin).replace(".", "") + ".zip"
+            PurePath.parent(map)
+            / (
+                str(PurePath.stem(map))
+                + get_factorio_version(factorio_bin).replace(".", "_")
+                + ".zip"
+            )
         )
         newmap.write_bytes(oldmap.read_bytes())
-        map = str(newmap)
+        map = newmap
     sync_mods(map)
 
-    command = f"{os.path.abspath(factorio_bin)}  --start-server  {os.path.abspath(map)}  --port  12245  --rcon-port  12345  --rcon-password  1234"
+    command = f"{Path.absolute(factorio_bin)}  --start-server  {Path.absolute(map)}  --port  12245  --rcon-port  12345  --rcon-password  1234"
     print(command)
     proc = psutil.Popen(args=command.split("  "), stdout=subprocess.PIPE)
     print("starting factorio server...")
@@ -139,17 +145,17 @@ def migrate_map(factorio_bin: str, map: str, inplace: bool, custom_script: str |
             break
 
 
-def sync_mods(map: str, disable_all: bool = False) -> None:
+def sync_mods(map: PurePath, disable_all: bool = False) -> None:
     fmm_name = {"linux": "fmm_linux", "win32": "fmm_win32.exe", "cygwin": "fmm_win32.exe"}[
         operatingsystem_codename
     ]
     if not disable_all:
         set_mod_command = (
-            os.path.join("fmm", fmm_name)
-            + f'  --config {os.path.join("fmm", "fmm.toml")}  sf "{map}"'
+            str(PurePath("fmm", fmm_name))
+            + f'  --config {PurePath("fmm", "fmm.toml")}  sf "{str(map)}"'
         )
     else:
-        set_mod_command = os.path.join("fmm", fmm_name) + " --game-dir factorio disable"
+        set_mod_command = str(PurePath("fmm", fmm_name)) + " --game-dir factorio disable"
     # print(">>>> sync_mods()\t", set_mod_command)
     print(os.popen(set_mod_command).read())
 
@@ -182,19 +188,19 @@ def remove_character_from_string(s: str, char: str = "\r") -> str:
 
 
 def run_benchmark(
-    map_: str,
+    map_: PurePath,
     folder: str,
     ticks: int,
     runs: int,
+    factorio_bin: PurePath,
     save: bool = True,
     disable_mods: bool = True,
-    factorio_bin: str | None = None,
     high_priority: bool | None = None,
 ) -> None:
     """Run a benchmark on the given map with the specified number of ticks and
     runs."""
     if not factorio_bin:
-        factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
+        factorio_bin = PurePath("factorio", "bin", "x64", "factorio")
     # setting mods
     if not disable_mods:
         sync_mods(map_)
@@ -254,7 +260,7 @@ def run_benchmark(
             filtered_output.extend(
                 [line for line in factorio_log.split("\n") if "ed" in line or "t" in line]
             )
-            with open(os.path.join(folder, "{}".format(os.path.splitext(map_)[0])), "x") as f:
+            with open(PurePath(folder, PurePath(map_).parent, PurePath(map_).stem), "x") as f:
                 f.write("\n".join(filtered_output))
 
 
@@ -262,19 +268,18 @@ def migrate_folder(
     inplace: bool = False,
     factorio_bin: str | None = None,
     map_regex: str = "*",
-    filenames: list[str] | None = None,
+    filenames: list[Path] | list[str] | None = None,
     custom_script: str | None = None,
 ) -> None:
+    factorio_path = PurePath(
+        factorio_bin if factorio_bin else PurePath("factorio", "bin", "x64", "factorio")
+    )
 
-    if not filenames:
-        filenames = glob.glob(os.path.join("saves", map_regex), recursive=True)
+    files = [Path(file) for file in filenames] if filenames else [*Path("saves").glob(map_regex)]
 
-    if not factorio_bin:
-        factorio_bin = os.path.join("factorio", "bin", "x64", "factorio")
-
-    for filename in deepcopy(filenames):
-        if os.path.isfile(filename):
-            migrate_map(factorio_bin, filename, inplace, custom_script)
+    for file in deepcopy(files):
+        if Path.is_file(file):
+            migrate_map(factorio_path, file, inplace, custom_script)
 
     exit()
 
@@ -288,25 +293,31 @@ def benchmark_folder(
     map_regex: str = "*",
     factorio_bin: str | None = None,
     folder: str | None = None,
-    filenames: list[str] | None = None,
+    filenames: list[str] | list[PurePath] | None = None,
     high_priority: bool | None = None,
 ) -> None:
     """Run benchmarks on all maps that match the given regular expression."""
     if not folder:
         folder = f"benchmark_on_{date.today()}_{datetime.now().strftime('%H_%M_%S')}"
-    os.makedirs(folder)
-    os.makedirs(os.path.join(folder, "saves"))
-    os.makedirs(os.path.join(folder, "graphs"))
+
+    Path(folder, "saves").mkdir(parents=True, exist_ok=True)
+    Path(folder, "graphs").mkdir(parents=True, exist_ok=True)
+
+    files = [Path(file) for file in filenames] if filenames else [*Path("saves").glob(map_regex)]
+
+    factorio_path = PurePath(
+        factorio_bin if factorio_bin else PurePath("factorio", "bin", "x64", "factorio")
+    )
 
     print("Warming up the system...")
     run_benchmark(
-        os.path.join("saves", "factorio_maps", "big_bases", "flame10k.zip"),
+        PurePath("saves", "factorio_maps", "big_bases", "flame10k.zip"),
         folder,
         ticks=100,
         runs=1,
         save=False,
         disable_mods=disable_mods,
-        factorio_bin=factorio_bin,
+        factorio_bin=factorio_path,
         high_priority=high_priority,
     )
     print("Finished warming up, starting the actual benchmark...")
@@ -316,12 +327,11 @@ def benchmark_folder(
     print("benchmark maps")
     print("==================")
     print("")
-    if not filenames:
-        filenames = glob.glob(os.path.join("saves", map_regex), recursive=True)
-    for filename in filenames:
-        if os.path.isfile(filename):
+
+    for filename in files:
+        if filename.is_file():
             print(filename)
-            os.makedirs(os.path.join(folder, os.path.split(filename)[0]), exist_ok=True)
+            Path(folder, PurePath(filename).parent).mkdir(parents=True, exist_ok=True)
             run_benchmark(
                 filename,
                 folder,
@@ -329,7 +339,7 @@ def benchmark_folder(
                 runs=runs,
                 save=True,
                 disable_mods=disable_mods,
-                factorio_bin=factorio_bin,
+                factorio_bin=factorio_path,
                 high_priority=high_priority,
             )
 
@@ -338,43 +348,32 @@ def benchmark_folder(
     processed_table: list[list[float]] = []
     maps: list[str] = []
     errfile: list[list[int]] = []
-    old_subfolder_name = ""
-    # print(
-    #     sorted(
-    #         glob.glob(
-    #             os.path.join(
-    #                 folder,
-    #                 "saves",
-    #                 map_regex,
-    #             ),
-    #             recursive=True,
-    #         )
-    #     )
-    # )
-    for file in sorted(
-        glob.glob(
-            os.path.join(folder, "saves", map_regex),
-            recursive=True,
-        )
-    ):
+    old_subfolder = Path()
+
+    for file in sorted(Path(folder, "saves").glob(map_regex)):
         # check if file is actually a file or a folder
 
-        if not os.path.isfile(file):
+        if not Path.is_file(file):
             continue
 
         # check if we are in a new folder and if so generate the old graphs.
-        file_name = os.path.split(file)[1]
-        subfolder_name = os.path.split(os.path.split(file)[0])[1]
-        if old_subfolder_name == "":
-            old_subfolder_name = subfolder_name
+        file_name = Path(file).name
+        subfolder = Path(file).parent
+        if old_subfolder.samefile(Path()):
+            old_subfolder = subfolder
         # print(subfolder_name)
-        if subfolder_name != old_subfolder_name:
+        if not subfolder.samefile(old_subfolder):
             plot_benchmark_results(
-                processed_table, outheader, maps, folder, old_subfolder_name, errfile
+                processed_table,
+                outheader,
+                maps,
+                folder,
+                PurePath(*old_subfolder.parts[2:]),
+                errfile,
             )
             processed_table = []
             maps = []
-            old_subfolder_name = subfolder_name
+            old_subfolder = subfolder
 
         with open(file, "r", newline="") as cfile:
 
@@ -401,14 +400,16 @@ def benchmark_folder(
                 # do the consistency plot
                 plot_ups_consistency(
                     folder=folder,
-                    subfolder=old_subfolder_name,
+                    subfolder=PurePath(*old_subfolder.parts[2:]),
                     data=[a[consistency_index] for a in inlist],
                     ticks=ticks,
                     skipticks=skipticks,
                     name="consistency_" + file_name + "_" + consistency,
                 )
 
-    plot_benchmark_results(processed_table, outheader, maps, folder, old_subfolder_name, errfile)
+    plot_benchmark_results(
+        processed_table, outheader, maps, folder, PurePath(*old_subfolder.parts[2:]), errfile
+    )
 
     print("")
     print("the benchmark is finished")
@@ -417,16 +418,16 @@ def benchmark_folder(
 
 def plot_ups_consistency(
     folder: str,
-    subfolder: str,
+    subfolder: PurePath,
     data: list[float],
     ticks: int,
     skipticks: int,
     name: str = "default",
 ) -> None:
-    subfolder_path = os.path.join(folder, "graphs", subfolder)
+    subfolder_path = PurePath(folder, "graphs", subfolder)
 
-    if not os.path.exists(subfolder_path):
-        os.makedirs(subfolder_path)
+    # if not Path(subfolder_path).exists:
+    Path(subfolder_path).mkdir(parents=True, exist_ok=True)
     darray = []
     med = []
     maxi = []
@@ -456,8 +457,8 @@ def plot_ups_consistency(
     plt.ylabel(ylabel="tick time [ms]")
     plt.legend()
     plt.tight_layout()
-    # Use os.path.join to build the file path for the output image
-    out_path = os.path.join(subfolder_path, f"{name}_all.png")
+    # Use PurePath to build the file path for the output image
+    out_path = PurePath(subfolder_path, f"{name}_all.png")
     # plt.show()
     plt.savefig(out_path, dpi=800)
     plt.clf()
@@ -471,8 +472,8 @@ def plot_ups_consistency(
     plt.ylabel(ylabel="tick time [ms]")
     plt.legend()
     plt.tight_layout()
-    # Use os.path.join to build the file path for the output image
-    out_path = os.path.join(subfolder_path, f"{name}_min_max_med.png")
+    # Use PurePath to build the file path for the output image
+    out_path = PurePath(subfolder_path, f"{name}_min_max_med.png")
     # plt.show()
     plt.savefig(out_path, dpi=800)
     plt.clf()
@@ -484,14 +485,14 @@ def plot_benchmark_results(
     titles: list[str],
     maps: list[str],
     folder: str,
-    subfolder: str,
+    subfolder: PurePath,
     errfile: list[list[int]],
 ) -> None:
     """Generate plots of benchmark results."""
     # Create the output subfolder if it does not exist
-    subfolder_path = os.path.join(folder, "graphs", subfolder)
-    if not os.path.exists(subfolder_path):
-        os.makedirs(subfolder_path)
+    subfolder_path = PurePath(folder, "graphs", subfolder)
+    # if not Path(subfolder_path).exists:
+    Path(subfolder_path).mkdir(parents=True, exist_ok=True)
 
     for col in itertools.chain(range(1, 11), range(22, 32)):
         fig, ax = plt.subplots()
@@ -507,8 +508,8 @@ def plot_benchmark_results(
         ax.set_xlabel("Mean frametime [ms/frame]")
         ax.set_ylabel("Map name")
         plt.tight_layout()
-        # Use os.path.join to build the file path for the output image
-        out_path = os.path.join(subfolder_path, f"{titles[col]}.png")
+        # Use PurePath to build the file path for the output image
+        out_path = PurePath(subfolder_path, f"{titles[col]}.png")
         plt.savefig(out_path)
         plt.clf()
         plt.close()
@@ -518,15 +519,15 @@ def create_mods_dir() -> None:
     """creates a folder: 'factorio/mods'"""
     """creates a file: 'factorio/mods/mod-list.json'"""
     """copies the file from 'fmm/mod-settings.dat' to 'factorio/mods/mod-settings.dat'"""
-    os.makedirs(os.path.join("factorio", "mods"), exist_ok=True)
-    mod_list_json_file = os.path.join("factorio", "mods", "mod-list.json")
-    if not os.path.exists(mod_list_json_file):
+    os.makedirs(PurePath("factorio", "mods"), exist_ok=True)
+    mod_list_json_file = PurePath("factorio", "mods", "mod-list.json")
+    if not Path(mod_list_json_file).exists():
         with open(mod_list_json_file, "x") as file:
             file.write('{"mods":[{"name":"base","enabled":true}]}')
-    mod_settings_dat_file = os.path.join("factorio", "mods", "mod-settings.dat")
-    if not os.path.exists(mod_settings_dat_file):
+    mod_settings_dat_file = PurePath("factorio", "mods", "mod-settings.dat")
+    if not Path(mod_settings_dat_file).exists():
         # copy the file 'mod-settings.dat'
-        source: Path = Path(os.path.join("fmm", "mod-settings.dat"))
+        source: Path = Path(PurePath("fmm", "mod-settings.dat"))
         destination: Path = Path(mod_settings_dat_file)
         destination.write_bytes(source.read_bytes())
 
@@ -646,7 +647,7 @@ if __name__ == "__main__":
     atexit.register(exit_handler)
     args = init_parser().parse_args()
     consistency_index: int = 0
-
+    create_mods_dir()
     if args.consistency is not None:
         try:
             consistency_index = outheader.index(args.consistency)
@@ -681,7 +682,7 @@ if __name__ == "__main__":
         exit()
 
     if args.disable_mods:
-        sync_mods(map="", disable_all=True)
+        sync_mods(map=PurePath(""), disable_all=True)
 
     benchmark_folder(
         args.ticks,
