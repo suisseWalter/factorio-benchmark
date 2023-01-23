@@ -306,7 +306,7 @@ def benchmark_folder(
     files = [Path(file) for file in filenames] if filenames else [*Path("saves").glob(map_regex)]
 
     factorio_path = PurePath(
-        factorio_bin if factorio_bin else PurePath("factorio", "bin", "x64", "factorio")
+        factorio_bin or PurePath("factorio", "bin", "x64", "factorio")
     )
 
     print("Warming up the system...")
