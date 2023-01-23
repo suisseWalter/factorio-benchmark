@@ -155,7 +155,7 @@ def sync_mods(map: PurePath, disable_all: bool = False) -> None:
             + f'  --config {PurePath("fmm", "fmm.toml")}  sf "{str(map)}"'
         )
     else:
-        set_mod_command = str(PurePath("fmm", fmm_name)) + " --game-dir factorio disable"
+        set_mod_command = f"{PurePath('fmm', fmm_name)} --game-dir factorio disable"
     # print(">>>> sync_mods()\t", set_mod_command)
     print(os.popen(set_mod_command).read())
 
