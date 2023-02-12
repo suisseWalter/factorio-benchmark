@@ -54,6 +54,7 @@ outheader = [
     "chartUpdate",
     "scriptUpdate",
 ]
+consistency_index: int = 0
 
 
 def exit_handler() -> None:
@@ -171,10 +172,10 @@ def install_maps(link: str) -> None:
 
 
 def install_factorio(
-    link: str = "https://factorio.com/get-download/stable/headless/linux64",
+    version: str,
 ) -> None:
     """Download and extract the latest version of Factorio."""
-    file = requests.get(link)
+    file = requests.get(f"https://factorio.com/get-download/{version}/headless/linux64")
     with open("factorio.zip", "xb") as zipfile:
         zipfile.write(file.content)
     with tarfile.open("factorio.zip", "r:xz") as tar:
@@ -305,9 +306,7 @@ def benchmark_folder(
 
     files = [Path(file) for file in filenames] if filenames else [*Path("saves").glob(map_regex)]
 
-    factorio_path = PurePath(
-        factorio_bin or PurePath("factorio", "bin", "x64", "factorio")
-    )
+    factorio_path = PurePath(factorio_bin or PurePath("factorio", "bin", "x64", "factorio"))
 
     print("Warming up the system...")
     run_benchmark(
@@ -539,44 +538,23 @@ def init_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument(
-        "-u",
-        "--update",
-        action="store_true",
-        help="Update Factorio to the latest version before running benchmarks.",
+        "-i",
+        "--install",
+        nargs="?",
+        const="stable",
+        help=str(
+            "Install the latest, stable, version of Factorio. \n"
+            "If a specific version is required you can provide the version number. \n",
+        ),
     )
     parser.add_argument(
         "-r",
         "--regex",
         default="**",
         help=str(
-            "Regular expression to match map names to benchmark. "
-            "The regex either needs to be escaped by quotes or every special "
-            "character needs to be escaped. use ** if you want to match "
-            "everything. * can only be used if a specific folder is specified.",
-        ),
-    )
-    parser.add_argument(
-        "-c",
-        "--consistency",
-        nargs="?",
-        const="wholeUpdate",
-        help=str(
-            "generates a update time consistency plot for the given metric. It "
-            "has to be a metric accessible by --benchmark-verbose. the default "
-            "value is 'wholeUpdate'. the first 10 ticks are skipped.(this can "
-            "be set by setting '--skipticks'.",
-        ),
-    )
-    parser.add_argument(
-        "-s",
-        "--skipticks",
-        type=int,
-        default="20",
-        help=str(
-            "the amount of ticks that are ignored at the beginning of very "
-            "benchmark. helps to get more consistent data, especially for "
-            "consistency plots. change this to '0' if you want to use all the "
-            "data",
+            "Regular expression to match map names to benchmark. \n"
+            "character needs to be escaped. use ** if you want to match \n"
+            "everything. * can only be used if a specific folder is specified.\n",
         ),
     )
     parser.add_argument(
@@ -592,17 +570,32 @@ def init_parser() -> argparse.ArgumentParser:
         type=int,
         default="5",
         help=str(
-            "the number of times each map is repeated. default five. should be "
+            "the number of times each map is repeated. default five. should be \n"
             "higher if `--consistency` is set.",
         ),
     )
     parser.add_argument(
-        "--version_link",
-        type=str,
+        "-c",
+        "--consistency",
+        nargs="?",
+        const="wholeUpdate",
         help=str(
-            "if you want to install a specific version of factorio. you have to "
-            "provide the complete download link to the headless version. don't "
-            "forget to update afterwards.",
+            "generates a update time consistency plot for the given metric. It \n"
+            "has to be a metric accessible by --benchmark-verbose. the default \n"
+            "value is 'wholeUpdate'. the first 10 ticks are skipped.(this can \n"
+            "be set by setting '--skipticks'.",
+        ),
+    )
+    parser.add_argument(
+        "-s",
+        "--skipticks",
+        type=int,
+        default="20",
+        help=str(
+            "the amount of ticks that are ignored at the beginning of very \n"
+            "benchmark. helps to get more consistent data, especially for \n"
+            "consistency plots. change this to '0' if you want to use all the \n"
+            "data",
         ),
     )
     parser.add_argument(
@@ -611,7 +604,7 @@ def init_parser() -> argparse.ArgumentParser:
         type=str,
         nargs="?",
         const="https://walterpi.hopto.org/s/g6BLGR6wa27cNRf/download",
-        help="install maps",
+        help="install maps, from a given link. ",
     )
     parser.add_argument(
         "-dm",
@@ -632,7 +625,7 @@ def init_parser() -> argparse.ArgumentParser:
         nargs="?",
         const="copy",
         help=str(
-            "Migrates all the selected maps to the currently installed factorio version."
+            "Migrates all the selected maps to the currently installed factorio version.\n"
             "By default it will migrate a copy of the map. To migrate in place add `inplace` as a argument"
         ),
     )
@@ -640,16 +633,12 @@ def init_parser() -> argparse.ArgumentParser:
     return parser
 
 
-######################################
-#
-# main
-if __name__ == "__main__":
-    atexit.register(exit_handler)
-    args = init_parser().parse_args()
-    consistency_index: int = 0
+def process_args(parser: argparse.Namespace) -> None:
+
     create_mods_dir()
     if args.consistency is not None:
         try:
+            global consistency_index
             consistency_index = outheader.index(args.consistency)
         except ValueError as e:
             print("the chosen consistency variable doesn't exist:", e)
@@ -669,11 +658,8 @@ if __name__ == "__main__":
                 migrate_folder(False, map_regex=args.regex)
         exit()
 
-    if args.update:
-        if args.version_link:
-            install_factorio(args.version_link)
-        else:
-            install_factorio()
+    if args.install is not None:
+        install_factorio(args.install)
         create_mods_dir()
         exit()
 
@@ -695,3 +681,12 @@ if __name__ == "__main__":
     )
 
     # plot_benchmark_results()
+
+
+######################################
+#
+# main
+if __name__ == "__main__":
+    atexit.register(exit_handler)
+    args = init_parser().parse_args()
+    process_args(args)
